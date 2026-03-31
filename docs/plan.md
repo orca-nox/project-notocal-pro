@@ -245,8 +245,8 @@ A phased build plan, ordered by dependency. Each phase produces a working (if in
 
 #### 2.1 — Graph Store (`useGraphStore`)
 
-- [ ] Implement `lib/graph.ts` — pure function that takes arrays of entities and returns adjacency maps (`projectId -> childIds`, `entityId -> projectId`, `unassigned` bucket).
-- [ ] Implement `store/useGraphStore.ts`:
+- [x] Implement `lib/graph.ts` — pure function that takes arrays of entities and returns adjacency maps (`projectId -> childIds`, `entityId -> projectId`, `unassigned` bucket).
+- [x] Implement `store/useGraphStore.ts`:
   - Ingest entities from IndexedDB cache.
   - Expose `events`, `tasks`, `notes`, `projects` maps.
   - Expose derived accessors: `childrenOf(projectId)`, `parentOf(entityId)`, `unassigned`.
@@ -254,7 +254,7 @@ A phased build plan, ordered by dependency. Each phase produces a working (if in
 
 #### 2.2 — UI Store (`useUIStore`)
 
-- [ ] Implement `store/useUIStore.ts`:
+- [x] Implement `store/useUIStore.ts`:
   - `activeView`: `'projects' | 'calendar' | 'tasks' | 'notes'` (default: `'calendar'`).
   - `selectedEntityId`: `string | null`.
   - `navPinned`: `boolean` (persisted).
@@ -263,7 +263,7 @@ A phased build plan, ordered by dependency. Each phase produces a working (if in
 
 #### 2.3 — Filter Store (`useFilterStore`)
 
-- [ ] Implement `store/useFilterStore.ts`:
+- [x] Implement `store/useFilterStore.ts`:
   - `enabledCalendars`: `Set<string>` — IDs of calendars currently toggled on (default: all on).
   - `taskFilters`: status, due date range, project, priority, sort order.
   - Fully persisted via Zustand `persist` middleware.
@@ -271,7 +271,7 @@ A phased build plan, ordered by dependency. Each phase produces a working (if in
 
 #### 2.4 — Draft Store (`useDraftStore`)
 
-- [ ] Implement `store/useDraftStore.ts`:
+- [x] Implement `store/useDraftStore.ts`:
   - `drafts`: `Map<entityUID, draftData>` — in-progress edits.
   - Persisted via Zustand `persist` middleware (localStorage, IndexedDB fallback for large notes).
   - Actions: `saveDraft()`, `getDraft()`, `clearDraft()`.
@@ -279,7 +279,7 @@ A phased build plan, ordered by dependency. Each phase produces a working (if in
 
 #### 2.5 — Sync Hook (`useSync`)
 
-- [ ] Implement `hooks/useSync.ts`:
+- [x] Implement `hooks/useSync.ts`:
   - Listen for `visibilitychange` / `focus` events.
   - On tab focus: trigger a WebDAV `sync-collection` report (or full ETag comparison).
   - Delta processing: compare incoming ETags with cached ETags, fetch only changed entities.
@@ -288,10 +288,10 @@ A phased build plan, ordered by dependency. Each phase produces a working (if in
 
 #### 2.6 — Integration Verification
 
-- [ ] Update the debug page to display the graph: list projects with their children.
+- [x] Update the debug page to display the graph: list projects with their children.
 - [ ] Create a project and a task linked via `RELATED-TO` directly in Radicale (or via the debug page). Verify the graph store resolves the relationship.
-- [ ] Toggle a calendar filter. Verify entities are filtered from the graph's derived accessors.
-- [ ] Start editing, refresh the page, confirm the draft survives.
+- [x] Toggle a calendar filter. Verify entities are filtered from the graph's derived accessors.
+- [x] Start editing, refresh the page, confirm the draft survives.
 
 **Phase 2 exit criteria:** All four Zustand stores are functional. The relationship graph correctly resolves `RELATED-TO` links. Filters, drafts, and UI preferences persist across sessions.
 
