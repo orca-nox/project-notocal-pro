@@ -25,17 +25,11 @@ export function useBootstrap() {
       })
 
       if (!exists) {
-        // Create the system-projects collection via MKCALENDAR
-        const accountUrl = (dav as unknown as { account?: { homeUrl?: string } }).account?.homeUrl
-        if (!accountUrl) {
-          throw new Error('Could not determine account home URL for collection creation')
-        }
-        const collectionUrl = `${accountUrl.replace(/\/$/, '')}/${SYSTEM_PROJECTS_PATH}/`
+        const base = config.serverUrl.replace(/\/$/, '')
+        const collectionUrl = `${base}/${config.username}/${SYSTEM_PROJECTS_PATH}/`
         await dav.makeCalendar({
           url: collectionUrl,
-          props: {
-            displayname: 'System Projects',
-          },
+          props: { displayname: 'System Projects' },
         })
       }
 

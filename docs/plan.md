@@ -184,54 +184,56 @@ A phased build plan, ordered by dependency. Each phase produces a working (if in
 
 #### 1.1 — Vite + React + Tailwind Bootstrap
 
-- [ ] Initialize Vite with the React-TS template.
-- [ ] Install and configure Tailwind CSS (with `@tailwindcss/typography` for future markdown rendering).
-- [ ] Install shadcn/ui, run `init`, add foundational primitives: `button`, `input`, `card`, `dialog`, `dropdown-menu`, `checkbox`, `command`, `separator`, `tooltip`.
-- [ ] Install `lucide-react`.
-- [ ] Set up path aliases (`@/components`, `@/lib`, `@/hooks`, `@/store`, `@/types`).
-- [ ] Create the `src/` directory structure from [architecture.md](./architecture.md) (empty placeholder files are fine).
-- [ ] Verify `npm run dev` serves a blank page with Tailwind working.
+- [x] Initialize Vite with the React-TS template.
+- [x] Install and configure Tailwind CSS (with `@tailwindcss/typography` for future markdown rendering).
+- [x] Install shadcn/ui, run `init`, add foundational primitives: `button`, `input`, `card`, `dialog`, `dropdown-menu`, `checkbox`, `command`, `separator`, `tooltip`.
+- [x] Install `lucide-react`.
+- [x] Set up path aliases (`@/components`, `@/lib`, `@/hooks`, `@/store`, `@/types`).
+- [x] Create the `src/` directory structure from [architecture.md](./architecture.md) (empty placeholder files are fine).
+- [x] Verify `npm run dev` serves a blank page with Tailwind working.
 
 #### 1.2 — TypeScript Type Definitions
 
-- [ ] Define core entity types in `src/types/entities.ts`: `CalendarInfo`, `Event`, `Task`, `Note`, `Project`, `SubTask`, `Prerequisite`.
-- [ ] Define CalDAV response types in `src/types/caldav.ts` (thin wrappers around `tsdav` types).
-- [ ] Define store state/action interfaces in `src/types/store.ts`.
+- [x] Define core entity types in `src/types/entities.ts`: `CalendarInfo`, `Event`, `Task`, `Note`, `Project`, `SubTask`, `Prerequisite`.
+- [x] Define CalDAV response types in `src/types/caldav.ts` (thin wrappers around `tsdav` types).
+- [x] Define store state/action interfaces in `src/types/store.ts`.
 
 #### 1.3 — CalDAV Client & Parsers
 
-- [ ] Install `tsdav`.
-- [ ] Implement `lib/caldav/client.ts` — configure the `tsdav` `DAVClient` with Radicale server URL and credentials. Support basic auth via environment variables (or a minimal proxy).
-- [ ] Implement `lib/caldav/parser.ts` — parse raw `.ics` strings into typed entities (`Event`, `Task`, `Note`, `Project`). Handle standard properties and custom `X-` properties.
-- [ ] Implement `lib/caldav/serializer.ts` — convert typed entities back into valid `.ics` strings.
-- [ ] Implement `lib/markdown/subtasks.ts` and `lib/markdown/prerequisites.ts` — parse/serialize structured markdown in `VTODO` descriptions.
+- [x] Install `tsdav`.
+- [x] Implement `lib/caldav/client.ts` — configure the `tsdav` `DAVClient` with Radicale server URL and credentials. Support basic auth via environment variables (or a minimal proxy).
+- [x] Implement `lib/caldav/parser.ts` — parse raw `.ics` strings into typed entities (`Event`, `Task`, `Note`, `Project`). Handle standard properties and custom `X-` properties.
+- [x] Implement `lib/caldav/serializer.ts` — convert typed entities back into valid `.ics` strings.
+- [x] Implement `lib/markdown/subtasks.ts` and `lib/markdown/prerequisites.ts` — parse/serialize structured markdown in `VTODO` descriptions.
 - [ ] Write unit tests for parsers and serializers (round-trip: parse -> serialize -> parse should be identity).
 
 #### 1.4 — IndexedDB Cache Layer
 
-- [ ] Set up IndexedDB (via `idb` or raw API) with object stores: `calendars`, `events`, `tasks`, `notes`, `projects`, `sync_tokens`.
-- [ ] Implement read/write helpers: `cacheEntities()`, `getCachedEntities()`, `clearCache()`.
-- [ ] Store both raw `.ics` and parsed data per entity for faithful round-tripping.
+- [x] Set up IndexedDB (via `idb` or raw API) with object stores: `calendars`, `events`, `tasks`, `notes`, `projects`, `sync_tokens`.
+- [x] Implement read/write helpers: `cacheEntities()`, `getCachedEntities()`, `clearCache()`.
+- [x] Store both raw `.ics` and parsed data per entity for faithful round-tripping.
 
 #### 1.5 — Core Data Hook (`useCalDAV`)
 
-- [ ] Implement `hooks/useCalDAV.ts`:
+- [x] Implement `hooks/useCalDAV.ts`:
   - Fetch all calendars from Radicale.
   - Fetch all entities (events, tasks, journals) per calendar.
   - Write entities (create / update via `PUT`, delete via `DELETE`).
   - Track ETags per entity. Send `If-Match` on updates.
   - Populate IndexedDB on fetch. Read from cache on cold start.
-- [ ] Implement `hooks/useBootstrap.ts` — check for and create the `system-projects` collection on first launch (`MKCOL` / `MKCALENDAR`).
+- [x] Implement `hooks/useBootstrap.ts` — check for and create the `system-projects` collection on first launch (`MKCOL` / `MKCALENDAR`).
 
 #### 1.6 — Smoke Test
 
-- [ ] Create a temporary debug page that:
+- [x] Create a temporary debug page that:
   - Connects to a running Radicale instance.
   - Lists all calendars.
   - Lists all events/tasks/notes.
   - Creates a test event and reads it back.
   - Deletes the test event.
 - [ ] Confirm round-trip works: Notocal creates an event -> Radicale stores it -> another CalDAV client (e.g., Thunderbird) can see it -> Notocal reads it back.
+
+> **Dev proxy note:** `tsdav`'s service discovery compares hrefs from Radicale's PROPFIND responses against the local URL — hostnames differ through a reverse proxy, causing `urlContains()` to fail. Workaround: skip `tsdav`'s `login()` and manually populate the `account` object (`rootUrl`, `principalUrl`, `homeUrl`) using the known Radicale URL structure (`/<username>/`). Vite proxies `/.well-known/caldav` and `/<username>/*` to the real Radicale server. This is a dev-only concern; Phase 11's Express proxy resolves it cleanly for production.
 
 **Phase 1 exit criteria:** The app connects to Radicale, reads/writes entities, caches them in IndexedDB, and survives a page refresh using the cache.
 
