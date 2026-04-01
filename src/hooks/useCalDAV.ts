@@ -4,7 +4,7 @@ import { getCalDAVConfig } from '@/lib/caldav/config'
 import { parseEntity, parseEvent, parseTask, parseNote, parseProject } from '@/lib/caldav/parser'
 import { serializeEvent, serializeTask, serializeNote, serializeProject } from '@/lib/caldav/serializer'
 import {
-  cacheCalendars,
+  replaceAllCached,
   cacheEvents,
   cacheTasks,
   cacheNotes,
@@ -117,14 +117,8 @@ export function useCalDAV() {
       }
     }
 
-    // Cache everything
-    await Promise.all([
-      cacheCalendars(calendars),
-      cacheEvents(events),
-      cacheTasks(tasks),
-      cacheNotes(notes),
-      cacheProjects(projects),
-    ])
+    // Replace the entire cache with what we just fetched
+    await replaceAllCached({ calendars, events, tasks, notes, projects })
 
     return { calendars, events, tasks, notes, projects }
   }, [client, fetchCalendars, getProjectsCollectionUrl])

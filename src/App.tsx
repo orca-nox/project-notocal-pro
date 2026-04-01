@@ -13,7 +13,8 @@ function App() {
   useSync()
 
   const { putEvent, deleteEvent, fetchAll } = useCalDAV()
-  const mergeEntities = useGraphStore((s) => s.mergeEntities)
+  const replaceEntities = useGraphStore((s) => s.replaceEntities)
+  const removeEntity = useGraphStore((s) => s.removeEntity)
 
   // Read from stores
   const calendars = useGraphStore((s) => s.calendars)
@@ -55,7 +56,7 @@ function App() {
     addLog('Syncing with Radicale...')
     try {
       const result = await fetchAll()
-      mergeEntities(result)
+      replaceEntities(result)
       addLog(`Synced: ${result.calendars.length} calendars, ${result.events.length} events, ${result.tasks.length} tasks, ${result.notes.length} notes, ${result.projects.length} projects`)
     } catch (err) {
       addLog(`Sync error: ${err}`)
@@ -95,8 +96,8 @@ function App() {
     addLog(`Deleting "${event.summary}"...`)
     try {
       await deleteEvent(event)
+      removeEntity('event', event.uid)
       addLog('Deleted')
-      await handleRefresh()
     } catch (err) {
       addLog(`Delete error: ${err}`)
     }

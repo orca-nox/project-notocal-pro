@@ -18,14 +18,19 @@ interface GraphState {
   graph: RelationshipGraph
 }
 
+interface EntityPayload {
+  calendars?: CalendarInfo[]
+  events?: Event[]
+  tasks?: Task[]
+  notes?: Note[]
+  projects?: Project[]
+}
+
 interface GraphActions {
-  mergeEntities(entities: {
-    calendars?: CalendarInfo[]
-    events?: Event[]
-    tasks?: Task[]
-    notes?: Note[]
-    projects?: Project[]
-  }): void
+  /** Additive merge — adds/updates entities, never removes */
+  mergeEntities(entities: EntityPayload): void
+  /** Full replace — clears all entities and sets from the provided data */
+  replaceEntities(entities: EntityPayload): void
   removeEntity(type: 'event' | 'task' | 'note' | 'project', uid: string): void
   updateEntity(type: 'event', entity: Event): void
   updateEntity(type: 'task', entity: Task): void
@@ -69,6 +74,33 @@ export const useGraphStore = create<GraphState & GraphActions>()((set, get) => (
       const newTasks = new Map(state.tasks)
       const newNotes = new Map(state.notes)
       const newProjects = new Map(state.projects)
+
+      calendars?.forEach((c) => newCalendars.set(c.id, c))
+      events?.forEach((e) => newEvents.set(e.uid, e))
+      tasks?.forEach((t) => newTasks.set(t.uid, t))
+      notes?.forEach((n) => newNotes.set(n.uid, n))
+      projects?.forEach((p) => newProjects.set(p.uid, p))
+
+      const next: GraphState = {
+        calendars: newCalendars,
+        events: newEvents,
+        tasks: newTasks,
+        notes: newNotes,
+        projects: newProjects,
+        graph: emptyGraph,
+      }
+      next.graph = rebuildGraph(next)
+      return next
+    })
+  },
+
+  replaceEntities({ calendars, events, tasks, notes, projects }) {
+    set(() => {
+      const newCalendars = new Map<string, CalendarInfo>()
+      const newEvents = new Map<string, Event>()
+      const newTasks = new Map<string, Task>()
+      const newNotes = new Map<string, Note>()
+      const newProjects = new Map<string, Project>()
 
       calendars?.forEach((c) => newCalendars.set(c.id, c))
       events?.forEach((e) => newEvents.set(e.uid, e))

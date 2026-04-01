@@ -13,6 +13,7 @@ import { useFilterStore } from '@/store/useFilterStore'
 export function useSync() {
   const { fetchAll, loadFromCache } = useCalDAV()
   const mergeEntities = useGraphStore((s) => s.mergeEntities)
+  const replaceEntities = useGraphStore((s) => s.replaceEntities)
   const enableAllCalendars = useFilterStore((s) => s.enableAllCalendars)
   const enabledCalendars = useFilterStore((s) => s.enabledCalendars)
   const syncingRef = useRef(false)
@@ -23,7 +24,7 @@ export function useSync() {
     syncingRef.current = true
     try {
       const result = await fetchAll()
-      mergeEntities(result)
+      replaceEntities(result)
       // If no calendars are enabled yet (first load), enable all
       if (enabledCalendars.size === 0) {
         enableAllCalendars(result.calendars.map((c) => c.id))
@@ -31,7 +32,7 @@ export function useSync() {
     } finally {
       syncingRef.current = false
     }
-  }, [fetchAll, mergeEntities, enableAllCalendars, enabledCalendars.size])
+  }, [fetchAll, replaceEntities, enableAllCalendars, enabledCalendars.size])
 
   // Initial load: cache first, then background sync
   useEffect(() => {

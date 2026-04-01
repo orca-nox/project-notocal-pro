@@ -139,6 +139,30 @@ export async function getSyncToken(calendarId: string): Promise<string | undefin
   return record?.syncToken
 }
 
+// Replace all cached entities (clear + rewrite, for full sync)
+export async function replaceAllCached(data: {
+  calendars: CalendarInfo[]
+  events: Event[]
+  tasks: Task[]
+  notes: Note[]
+  projects: Project[]
+}): Promise<void> {
+  const db = await getDb()
+  const entityStores: StoreName[] = ['calendars', 'events', 'tasks', 'notes', 'projects']
+  for (const store of entityStores) {
+    const tx = db.transaction(store, 'readwrite')
+    await tx.store.clear()
+    await tx.done
+  }
+  await Promise.all([
+    cacheCalendars(data.calendars),
+    cacheEvents(data.events),
+    cacheTasks(data.tasks),
+    cacheNotes(data.notes),
+    cacheProjects(data.projects),
+  ])
+}
+
 // Clear everything
 export async function clearCache(): Promise<void> {
   const db = await getDb()
