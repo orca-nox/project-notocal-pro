@@ -344,30 +344,30 @@ Starting with the Calendar view because it's the most visually immediate proof t
 
 #### 4.1 — Calendar Grid Components
 
-- [ ] Implement `components/calendar/MonthGrid.tsx` — standard month grid. Each date cell shows event chips (title + color from calendar).
-- [ ] Implement `components/calendar/WeekGrid.tsx` — 7-day view with hourly time slots. Events rendered as positioned, colored blocks.
-- [ ] Implement `components/calendar/EventBlock.tsx` — the event chip/block used in both grids.
-- [ ] Implement `components/views/CalendarView.tsx` — view wrapper with a month/week toggle. Fetches events from `useGraphStore`, filtered by `useFilterStore.enabledCalendars`.
+- [x] Implement `components/calendar/MonthGrid.tsx` — standard month grid. Each date cell shows event chips (title + color from calendar).
+- [x] Implement `components/calendar/WeekGrid.tsx` — 7-day view with hourly time slots. Events rendered as positioned, colored blocks.
+- [x] Implement `components/calendar/EventBlock.tsx` — the event chip/block used in both grids.
+- [x] Implement `components/views/CalendarView.tsx` — view wrapper with a month/week toggle. Fetches events from `useGraphStore`, filtered by `useFilterStore.enabledCalendars`.
 
 #### 4.2 — Event Interactions
 
-- [ ] Click an empty time slot (Week view) or date cell (Month view) to open a quick-add modal pre-filled with that date/time.
-- [ ] Press `C` to open the quick-add modal without a pre-filled time.
-- [ ] Click an existing event to select it — sets `useUIStore.selectedEntityId`, which triggers Column 3 to show the editor (Phase 6).
-- [ ] Drag-to-resize events in Week view (adjust `DTEND`).
-- [ ] Drag-to-move events between time slots / dates (adjust `DTSTART` + `DTEND`).
+- [x] Click an empty time slot (Week view) or date cell (Month view) to open a quick-add modal pre-filled with that date/time.
+- [x] Press `C` to open the quick-add modal without a pre-filled time.
+- [x] Click an existing event to select it — sets `useUIStore.selectedEntityId`, which triggers Column 3 to show the editor (Phase 6).
+- [x] Drag-to-resize events in Week view (adjust `DTEND`).
+- [x] Drag-to-move events between time slots / dates (adjust `DTSTART` + `DTEND`).
 
 #### 4.3 — Quick-Add Event Modal
 
-- [ ] Implement a lightweight modal (`shadcn/ui` Dialog):
+- [x] Implement a lightweight modal (`shadcn/ui` Dialog):
   - Fields: Title, Start, End, Calendar (dropdown), Project (optional dropdown).
   - On submit: serialize to `.ics`, `PUT` to Radicale, update IndexedDB + GraphStore, close modal.
   - Keyboard: `Enter` to submit, `Escape` to cancel.
 
 #### 4.4 — Event Duplication
 
-- [ ] "Duplicate" action on events (via a button in the event block or context menu later).
-- [ ] Clones the event with a new `UID` and `DTSTART`/`DTEND` shifted by the original event's duration (default: +1 week). User can adjust before saving.
+- [x] "Duplicate" action on events (via a button in the event block or context menu later).
+- [x] Clones the event with a new `UID` and `DTSTART`/`DTEND` shifted by the original event's duration (default: +1 week). User can adjust before saving.
 
 **Phase 4 exit criteria:** The Calendar view displays real events from Radicale in month and week grids. Events can be created, duplicated, moved, and resized. Calendar toggle filters in the sidebar hide/show events by calendar.
 
