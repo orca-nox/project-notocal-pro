@@ -303,15 +303,15 @@ A phased build plan, ordered by dependency. Each phase produces a working (if in
 
 #### 3.1 — App Shell Layout
 
-- [ ] Implement `App.tsx` — three-column flexbox layout with a resizable divider between Columns 2 and 3.
-- [ ] Implement `components/panes/Sidebar.tsx` — fixed-width Column 1 placeholder.
-- [ ] Implement `components/panes/MainPane.tsx` — flexible Column 2 with a view router (renders the correct view component based on `useUIStore.activeView`).
-- [ ] Implement `components/panes/DetailPane.tsx` — flexible Column 3 placeholder (will show "select an item" empty state for now).
-- [ ] Install a resizable panel library (e.g., `react-resizable-panels`) or implement a custom drag divider.
+- [x] Implement `App.tsx` — three-column flexbox layout with a resizable divider between Columns 2 and 3.
+- [x] Implement `components/panes/Sidebar.tsx` — fixed-width Column 1 placeholder.
+- [x] Implement `components/panes/MainPane.tsx` — flexible Column 2 with a view router (renders the correct view component based on `useUIStore.activeView`).
+- [x] Implement `components/panes/DetailPane.tsx` — flexible Column 3 placeholder (will show "select an item" empty state for now).
+- [x] Install a resizable panel library (e.g., `react-resizable-panels`) or implement a custom drag divider.
 
 #### 3.2 — Top Navigation Bar
 
-- [ ] Implement `components/TopNav.tsx`:
+- [x] Implement `components/TopNav.tsx`:
   - Slide-down behavior: hidden by default, appears on cursor near top edge (CSS transition + mouse event listener).
   - Pin toggle: locks the bar visible (persisted via `useUIStore.navPinned`).
   - View switcher: four buttons wired to `useUIStore.setView()`.
@@ -319,15 +319,15 @@ A phased build plan, ordered by dependency. Each phase produces a working (if in
 
 #### 3.3 — Global Keyboard Shortcuts
 
-- [ ] Register global keyboard listeners (at the `App` level or via a `useHotkeys` hook):
+- [x] Register global keyboard listeners (at the `App` level or via a `useHotkeys` hook):
   - `1` / `2` / `3` / `4` — switch views (disabled when a text input is focused).
   - `Ctrl+K` — open search overlay (placeholder for now).
   - `Escape` — close modals, deselect entity.
-- [ ] Verify shortcuts don't fire while typing in inputs.
+- [x] Verify shortcuts don't fire while typing in inputs.
 
 #### 3.4 — Sidebar Content
 
-- [ ] Wire `Sidebar.tsx` to `useGraphStore` and `useFilterStore`:
+- [x] Wire `Sidebar.tsx` to `useGraphStore` and `useFilterStore`:
   - Render the list of CalDAV calendars with color swatches and toggle checkboxes.
   - Render a "Global Search" button / input (opens overlay, placeholder action).
   - Render "+ New Project" and "+ New Calendar" buttons (placeholder actions).
