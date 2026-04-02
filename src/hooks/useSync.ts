@@ -15,9 +15,19 @@ export function useSync() {
   const mergeEntities = useGraphStore((s) => s.mergeEntities)
   const replaceEntities = useGraphStore((s) => s.replaceEntities)
   const enableAllCalendars = useFilterStore((s) => s.enableAllCalendars)
-  const enabledCalendars = useFilterStore((s) => s.enabledCalendars)
   const syncingRef = useRef(false)
   const initializedRef = useRef(false)
+
+  /** Enable any calendars not yet in the filter set (handles first load + new calendars). */
+  const autoEnableCalendars = useCallback((calendarIds: string[]) => {
+    const current = useFilterStore.getState().enabledCalendars
+    const newIds = calendarIds.filter((id) => !current.has(id))
+    if (current.size === 0) {
+      enableAllCalendars(calendarIds)
+    } else if (newIds.length > 0) {
+      enableAllCalendars([...Array.from(current), ...newIds])
+    }
+  }, [enableAllCalendars])
 
   const doSync = useCallback(async () => {
     if (syncingRef.current) return
@@ -25,14 +35,11 @@ export function useSync() {
     try {
       const result = await fetchAll()
       replaceEntities(result)
-      // If no calendars are enabled yet (first load), enable all
-      if (enabledCalendars.size === 0) {
-        enableAllCalendars(result.calendars.map((c) => c.id))
-      }
+      autoEnableCalendars(result.calendars.map((c) => c.id))
     } finally {
       syncingRef.current = false
     }
-  }, [fetchAll, replaceEntities, enableAllCalendars, enabledCalendars.size])
+  }, [fetchAll, replaceEntities, autoEnableCalendars])
 
   // Initial load: cache first, then background sync
   useEffect(() => {
@@ -44,28 +51,27 @@ export function useSync() {
       const cached = await loadFromCache()
       if (cached.calendars.length > 0) {
         mergeEntities(cached)
-        if (enabledCalendars.size === 0) {
-          enableAllCalendars(cached.calendars.map((c) => c.id))
-        }
+        autoEnableCalendars(cached.calendars.map((c) => c.id))
       }
       // Then sync from Radicale in background
       await doSync()
     }
     init()
-  }, [loadFromCache, mergeEntities, enableAllCalendars, enabledCalendars.size, doSync])
+  }, [loadFromCache, mergeEntities, autoEnableCalendars, doSync])
 
   // Sync on tab focus
   useEffect(() => {
     const onFocus = () => { doSync() }
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') doSync()
+    }
 
     window.addEventListener('focus', onFocus)
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') doSync()
-    })
+    document.addEventListener('visibilitychange', onVisibilityChange)
 
     return () => {
       window.removeEventListener('focus', onFocus)
-      document.removeEventListener('visibilitychange', onFocus)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
     }
   }, [doSync])
 }

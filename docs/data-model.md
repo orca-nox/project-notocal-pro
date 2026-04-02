@@ -140,11 +140,43 @@ END:VCALENDAR
 | `UID` | Yes | Unique identifier. |
 | `DTSTAMP` | Yes | Creation/modification timestamp. |
 | `DTSTART` | Yes | Event start time. |
-| `DTEND` | Yes | Event end time. |
+| `DTEND` | Yes* | Event end time. *See DURATION fallback below.* |
+| `DURATION` | No | Alternative to `DTEND`. If `DTEND` is absent, the parser computes it from `DTSTART + DURATION`. |
 | `SUMMARY` | Yes | Event title. |
 | `DESCRIPTION` | No | Freeform event details. |
 | `LOCATION` | No | Event location. |
 | `RELATED-TO` | No | UID of the parent Project (if any). |
+
+### DURATION Fallback
+
+RFC 5545 allows events to specify either `DTEND` or `DURATION` (but not both). Some CalDAV clients (notably Google Calendar exports) use `DURATION` instead of `DTEND`. Notocal Pro's parser handles this transparently:
+
+1. If `DTEND` is present, it is used directly.
+2. If `DTEND` is absent and `DURATION` is present (e.g., `DURATION:PT1H30M`), the parser computes `DTEND = DTSTART + DURATION`.
+3. If neither is present, the event is unparseable and skipped.
+
+Supported `DURATION` formats: `PnW` (weeks), `PnD` (days), `PTnH` (hours), `PTnM` (minutes), `PTnS` (seconds), and combinations (e.g., `P1DT2H30M`).
+
+### VTIMEZONE Handling
+
+Many CalDAV clients (DAVx5, Thunderbird, etc.) embed `VTIMEZONE` blocks in `.ics` files before the `VEVENT` component. These timezone definitions contain their own `DTSTART` properties (for `STANDARD`/`DAYLIGHT` transition rules) which are **not** event properties:
+
+```ics
+BEGIN:VCALENDAR
+BEGIN:VTIMEZONE
+TZID:Asia/Manila
+BEGIN:STANDARD
+DTSTART:19700101T000000        ← This is NOT the event's start time
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+DTSTART;TZID=Asia/Manila:20260407T100000   ← This IS the event's start time
+...
+END:VEVENT
+END:VCALENDAR
+```
+
+The parser extracts only the `BEGIN:VEVENT...END:VEVENT` (or `VTODO`/`VJOURNAL`) block before reading properties, ensuring timezone-related properties are never confused with entity properties.
 
 ### Recurrence (v1 Simplification)
 

@@ -1,7 +1,7 @@
 import { useCallback, useRef } from 'react'
 import { getClient } from '@/lib/caldav/client'
 import { getCalDAVConfig } from '@/lib/caldav/config'
-import { parseEntity, parseEvent, parseTask, parseNote, parseProject } from '@/lib/caldav/parser'
+import { parseEvent, parseTask, parseNote, parseProject } from '@/lib/caldav/parser'
 import { serializeEvent, serializeTask, serializeNote, serializeProject } from '@/lib/caldav/serializer'
 import {
   replaceAllCached,
@@ -92,16 +92,15 @@ export function useCalDAV() {
         const ics = obj.data as string | undefined
         if (!ics) continue
         const etag = (obj.etag || '') as string
-        const entity = parseEntity(ics, cal.id, etag, false)
-        if (!entity) continue
 
-        if ('dtend' in entity && 'dtstart' in entity && 'location' in entity) {
-          events.push(entity as Event)
-        } else if ('status' in entity && 'subtasks' in entity) {
-          tasks.push(entity as Task)
-        } else if ('calendarId' in entity && !('status' in entity)) {
-          notes.push(entity as Note)
-        }
+        const event = parseEvent(ics, cal.id, etag)
+        if (event) { events.push(event); continue }
+
+        const task = parseTask(ics, cal.id, etag)
+        if (task) { tasks.push(task); continue }
+
+        const note = parseNote(ics, cal.id, etag)
+        if (note) notes.push(note)
       }
     }
 
