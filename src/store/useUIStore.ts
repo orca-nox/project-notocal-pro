@@ -7,6 +7,7 @@ interface UIState {
   selectedEntityId: string | null
   navPinned: boolean
   notesEditorMode: 'split' | 'full'
+  tasksViewMode: 'list' | 'kanban'
 }
 
 interface UIActions {
@@ -14,6 +15,7 @@ interface UIActions {
   selectEntity(id: string | null): void
   toggleNavPin(): void
   setNotesEditorMode(mode: 'split' | 'full'): void
+  setTasksViewMode(mode: 'list' | 'kanban'): void
 }
 
 export const useUIStore = create<UIState & UIActions>()(
@@ -23,6 +25,7 @@ export const useUIStore = create<UIState & UIActions>()(
       selectedEntityId: null,
       navPinned: false,
       notesEditorMode: 'split',
+      tasksViewMode: 'list',
 
       setView(view) {
         set({ activeView: view, selectedEntityId: null })
@@ -36,13 +39,16 @@ export const useUIStore = create<UIState & UIActions>()(
       setNotesEditorMode(mode) {
         set({ notesEditorMode: mode })
       },
+      setTasksViewMode(mode) {
+        set({ tasksViewMode: mode })
+      },
     }),
     {
       name: 'notocal-ui',
-      // Only persist navPinned and notesEditorMode — view and selection are session-only
       partialize: (state) => ({
         navPinned: state.navPinned,
         notesEditorMode: state.notesEditorMode,
+        tasksViewMode: state.tasksViewMode,
       }),
     },
   ),

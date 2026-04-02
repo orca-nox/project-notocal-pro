@@ -392,37 +392,37 @@ Starting with the Calendar view because it's the most visually immediate proof t
 
 #### 5.1 — Task List Components
 
-- [ ] Implement `components/views/TasksView.tsx` — list view with grouped tasks (by project, or "Unassigned").
-- [ ] Render each task row: checkbox (toggle status), title, due date badge, priority indicator, project badge, calendar color dot.
-- [ ] Parse `DESCRIPTION` for sub-tasks via `lib/markdown/subtasks.ts`. Render sub-tasks as indented children with their own checkboxes.
-- [ ] Toggling a checkbox writes the updated `STATUS` (or sub-task state) back to Radicale immediately.
+- [x] Implement `components/views/TasksView.tsx` — list view with grouped tasks (by project, or "Unassigned").
+- [x] Render each task row: checkbox (toggle status), title, due date badge, priority indicator, project badge, calendar color dot.
+- [x] Parse `DESCRIPTION` for sub-tasks via `lib/markdown/subtasks.ts`. Render sub-tasks as indented children with their own checkboxes.
+- [x] Toggling a checkbox writes the updated `STATUS` (or sub-task state) back to Radicale immediately.
 
 #### 5.2 — Filter Bar
 
-- [ ] Implement a horizontal filter bar at the top of the task list:
+- [x] Implement a horizontal filter bar at the top of the task list:
   - Status: All / Needs Action / Completed / Cancelled.
   - Due Date: Overdue / Today / This Week / This Month / No Date / Custom Range.
   - Project: dropdown of all projects + "Unassigned".
   - Priority: High / Medium / Low / None.
   - Sort: Due Date / Priority / Project / Date Created.
-- [ ] Wire filters to `useFilterStore.taskFilters`. Filters are persisted.
+- [x] Wire filters to `useFilterStore.taskFilters`. Filters are persisted.
 
 #### 5.3 — Global Kanban Toggle
 
-- [ ] Implement a view toggle button in the TasksView header: List vs. Kanban.
-- [ ] Kanban mode reuses `components/kanban/` (built in Phase 7 for Projects, or built here first and shared). Three columns: Upcoming, In Progress, Done. Aggregates all tasks regardless of project.
+- [x] Implement a view toggle button in the TasksView header: List vs. Kanban.
+- [x] Kanban mode reuses `components/kanban/` (built in Phase 7 for Projects, or built here first and shared). Three columns: Upcoming, In Progress, Done. Aggregates all tasks regardless of project.
 
 #### 5.4 — Quick-Add Task
 
-- [ ] Inline quick-add input at the top of the task list (or bottom of each group).
-- [ ] Minimal fields: title, calendar. Creates a `VTODO` with `STATUS:NEEDS-ACTION` and no due date.
+- [x] Inline quick-add input at the top of the task list (or bottom of each group).
+- [x] Minimal fields: title, calendar. Creates a `VTODO` with `STATUS:NEEDS-ACTION` and no due date.
 - [ ] Optional: press `Tab` after title to expand inline fields for due date and project.
 
 #### 5.5 — Task Deletion
 
-- [ ] Delete action on tasks.
-- [ ] If the task has sub-tasks (parsed from `DESCRIPTION`), show a confirmation: *"This task has sub-tasks. Delete them as well?"*
-- [ ] If the task is a prerequisite of another task, strip the `[prereq:<UID>]` line from the dependent task's `DESCRIPTION` and update it via CalDAV.
+- [x] Delete action on tasks.
+- [x] If the task has sub-tasks (parsed from `DESCRIPTION`), show a confirmation: *"This task has sub-tasks. Delete them as well?"*
+- [x] If the task is a prerequisite of another task, strip the `[prereq:<UID>]` line from the dependent task's `DESCRIPTION` and update it via CalDAV.
 
 **Phase 5 exit criteria:** Tasks view shows a filterable, sortable hierarchical list. Sub-tasks render inline and toggle independently. Global Kanban alternative works. Tasks can be created, completed, and deleted with proper cascade logic.
 
