@@ -105,8 +105,8 @@ The single most important hook. Owns the entire CalDAV lifecycle:
 
 | Responsibility | Description |
 |---|---|
-| **Fetching** | Uses `tsdav` to fetch calendars, events, tasks, and journals from Radicale. |
-| **Writing** | Creates, updates, and deletes entities via CalDAV `PUT` / `DELETE`. |
+| **Fetching** | Uses `tsdav` to fetch calendars, events, tasks, and journals from Radicale. Passes a custom `comp-filter` (VCALENDAR-only, no nested component filter) to override `tsdav`'s default VEVENT-only filter, ensuring all component types (VEVENT, VTODO, VJOURNAL) are returned. |
+| **Writing** | Creates and updates entities via CalDAV `PUT` / `DELETE`. Uses `createCalendarObject` (with `If-None-Match: *`) for new objects and `updateCalendarObject` (with `If-Match: etag`) for existing ones, via a shared `putCalendarObject` helper. |
 | **ETag tracking** | Stores ETags per entity. Sends `If-Match` on updates. Detects `412 Precondition Failed` for conflict resolution. |
 | **Cascading deletion** | Implements the hierarchical deletion logic (project -> children, task -> sub-tasks). |
 | **IndexedDB caching** | Writes fetched entities to IndexedDB. Reads from cache on cold start for instant UI, then syncs in background. |

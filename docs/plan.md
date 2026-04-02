@@ -428,6 +428,15 @@ Starting with the Calendar view because it's the most visually immediate proof t
 
 ---
 
+### Bug Fixes: tsdav Fetch & Write Semantics (during Phase 5)
+
+These issues were discovered during Phase 5 development and testing with real task data.
+
+- [x] **Fix: tsdav default comp-filter excludes VTODOs and VJOURNALs.** `tsdav`'s `fetchCalendarObjects` defaults to a `comp-filter` requesting only `VEVENT` components. Tasks (VTODO) and notes (VJOURNAL) were never returned by the server during sync, making them invisible after creation. Fixed by passing a custom filter specifying only `VCALENDAR` (no nested component filter), which returns all component types.
+- [x] **Fix: createCalendarObject used for updates.** All four put methods used `createCalendarObject`, which sends `If-None-Match: *` (reject if object already exists). Updating an existing task/event/note/project would silently fail. Extracted a shared `putCalendarObject` helper that dispatches to `createCalendarObject` for new objects and `updateCalendarObject` (with `If-Match: etag`) for existing ones.
+
+---
+
 ### Phase 6: Detail Pane & Editor Forms (Column 3)
 
 **Goal:** Selecting any entity opens a structured editor form in Column 3, with draft persistence and ETag conflict handling.
