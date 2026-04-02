@@ -443,13 +443,14 @@ These issues were discovered during Phase 5 development and testing with real ta
 
 #### 6.1 — Detail Pane Modes
 
-- [ ] Implement the mode switch in `DetailPane.tsx`:
+- [x] Implement the mode switch in `DetailPane.tsx`:
   - **Default (nothing selected):** show a placeholder/empty state (AI chat placeholder — actual AI comes in Phase 10).
   - **Active (entity selected):** show the editor form. (The vertical split with mini-AI is deferred to Phase 10.)
+  - Resolves entity type by checking which store map contains the UID, routes to the correct editor.
 
 #### 6.2 — Event Editor
 
-- [ ] Implement `components/editors/EventEditor.tsx`:
+- [x] Implement `components/editors/EventEditor.tsx`:
   - Fields: Title, Start date/time, End date/time, Location, Description (plain textarea), Calendar (dropdown), Project (optional dropdown).
   - Pre-populate from the selected entity in `useGraphStore`.
   - On change: auto-save draft to `useDraftStore` (debounced).
@@ -457,30 +458,37 @@ These issues were discovered during Phase 5 development and testing with real ta
 
 #### 6.3 — Task Editor
 
-- [ ] Implement `components/editors/TaskEditor.tsx`:
+- [x] Implement `components/editors/TaskEditor.tsx`:
   - Fields: Title, Due date, Status (toggle/dropdown), Priority, Calendar, Project.
-  - **Sub-tasks section:** dedicated checkbox list UI. Add/remove/reorder sub-tasks. Serialized to `DESCRIPTION` markdown on save.
-  - **Prerequisites section:** linked task picker. Search/select existing tasks. Serialized to `DESCRIPTION` markdown on save.
+  - **Sub-tasks section:** dedicated checkbox list UI with add/remove per sub-task.
+  - **Prerequisites section:** linked task picker with search-to-filter from existing tasks. Serialized to `DESCRIPTION` markdown on save.
   - Same draft + save behavior as Event Editor.
 
 #### 6.4 — Project Editor
 
-- [ ] Implement `components/editors/ProjectEditor.tsx`:
+- [x] Implement `components/editors/ProjectEditor.tsx`:
   - Fields: Name, Description, Start/End dates, Primary Context (calendar dropdown), Status (`X-PROJECT-STATUS` dropdown), Priority (`X-PROJECT-PRIORITY` number input).
   - Same draft + save behavior.
 
 #### 6.5 — ETag Conflict Handling
 
-- [ ] Detect `412 Precondition Failed` responses in `useCalDAV`.
-- [ ] Surface a conflict banner in Column 3: *"This item was modified externally. Overwrite / Reload."*
-- [ ] "Overwrite" retries the `PUT` without `If-Match`.
-- [ ] "Reload" fetches the server version, replaces the editor state, and clears the draft.
+- [x] Detect `412 Precondition Failed` responses in `useCalDAV`.
+- [x] Surface a conflict banner in Column 3: *"This item was modified externally. Overwrite / Reload."*
+- [x] "Overwrite" re-fetches fresh etag from server then retries PUT with correct etag.
+- [x] "Reload" fetches the server version, replaces the editor state, and clears the draft.
 
 #### 6.6 — Draft Restoration
 
-- [ ] On selecting an entity for editing, check `useDraftStore` for an existing draft.
-- [ ] If a draft exists, restore it into the editor with a subtle banner: *"You have unsaved changes from [timestamp]. Discard?"*
-- [ ] "Discard" clears the draft and loads the server version.
+- [x] On selecting an entity for editing, check `useDraftStore` for an existing draft.
+- [x] If a draft exists, restore it into the editor with a subtle banner: *"You have unsaved changes from [timestamp]. Discard?"*
+- [x] "Discard" clears the draft and loads the server version.
+
+#### Additional: Note Editor & View Selection Wiring
+
+- [x] Implement `components/editors/NoteEditor.tsx` (basic: title, content textarea, calendar, project).
+- [x] Wire `selectEntity` into `ProjectsView` — clicking projects and child items opens the editor.
+- [x] Wire `selectEntity` into `NotesView` — clicking notes opens the editor.
+- [x] Shared `useEditorForm<T>` hook encapsulates the full editor lifecycle (draft, save, conflict, Ctrl+S).
 
 **Phase 6 exit criteria:** Clicking any event, task, or project opens a full editor in Column 3. Edits are draft-saved automatically and survive refresh. Saves go through CalDAV with ETag checking. Conflicts are surfaced and resolvable.
 
