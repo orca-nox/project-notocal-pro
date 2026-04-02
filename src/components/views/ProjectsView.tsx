@@ -1,9 +1,12 @@
 import { useGraphStore } from '@/store/useGraphStore'
+import { useUIStore } from '@/store/useUIStore'
 
 export function ProjectsView() {
   const projects = useGraphStore((s) => s.projects)
   const childrenOf = useGraphStore((s) => s.childrenOf)
   const unassigned = useGraphStore((s) => s.unassigned)
+  const selectedEntityId = useUIStore((s) => s.selectedEntityId)
+  const selectEntity = useUIStore((s) => s.selectEntity)
 
   const projectsArr = Array.from(projects.values())
   const unassignedItems = unassigned()
@@ -18,7 +21,15 @@ export function ProjectsView() {
           {projectsArr.map((p) => {
             const children = childrenOf(p.uid)
             return (
-              <div key={p.uid} className="rounded-lg border border-border p-4">
+              <div
+                key={p.uid}
+                className={`rounded-lg border p-4 cursor-pointer transition-colors ${
+                  selectedEntityId === p.uid
+                    ? 'border-primary bg-accent'
+                    : 'border-border hover:bg-accent/50'
+                }`}
+                onClick={() => selectEntity(p.uid)}
+              >
                 <h2 className="font-semibold">
                   {p.summary}{' '}
                   <span className="text-muted-foreground text-sm font-normal">[{p.status}]</span>
@@ -26,7 +37,15 @@ export function ProjectsView() {
                 {children.length > 0 && (
                   <ul className="mt-2 ml-4 space-y-0.5 text-sm text-muted-foreground">
                     {children.map((c) => (
-                      <li key={c.uid}>{c.summary}</li>
+                      <li
+                        key={c.uid}
+                        className={`cursor-pointer rounded px-1 py-0.5 transition-colors hover:text-foreground ${
+                          selectedEntityId === c.uid ? 'text-foreground bg-accent' : ''
+                        }`}
+                        onClick={(e) => { e.stopPropagation(); selectEntity(c.uid) }}
+                      >
+                        {c.summary}
+                      </li>
                     ))}
                   </ul>
                 )}
@@ -40,7 +59,15 @@ export function ProjectsView() {
               </h2>
               <ul className="mt-2 ml-4 space-y-0.5 text-sm text-muted-foreground">
                 {unassignedItems.map((c) => (
-                  <li key={c.uid}>{c.summary}</li>
+                  <li
+                    key={c.uid}
+                    className={`cursor-pointer rounded px-1 py-0.5 transition-colors hover:text-foreground ${
+                      selectedEntityId === c.uid ? 'text-foreground bg-accent' : ''
+                    }`}
+                    onClick={() => selectEntity(c.uid)}
+                  >
+                    {c.summary}
+                  </li>
                 ))}
               </ul>
             </div>

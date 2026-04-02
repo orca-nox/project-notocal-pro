@@ -22,6 +22,7 @@ src/
 ├── hooks/                    # Data fetching & CalDAV operations
 │   ├── useCalDAV.ts          # Core CalDAV client hook (fetch, put, delete)
 │   ├── useSync.ts            # Sync-on-focus with auto calendar enablement
+│   ├── useEditorForm.ts      # Shared editor lifecycle (draft, save, conflict, Ctrl+S)
 │   ├── useBootstrap.ts       # First-launch collection setup
 │   └── useKeyboardShortcuts.ts # Global keyboard shortcuts (1-4 views, Esc)
 │
@@ -77,9 +78,15 @@ src/
 │   │   ├── EventBlock.tsx     # Colored event chip/block for both grids
 │   │   └── QuickAddModal.tsx  # Lightweight event creation dialog
 │   │
-│   ├── editors/              # Column 3 editor forms (planned Phase 6)
+│   ├── editors/              # Column 3 editor forms (Phase 6)
+│   │   ├── EventEditor.tsx    # Event fields: title, start/end, location, description, calendar, project
+│   │   ├── TaskEditor.tsx     # Task fields + sub-task list + prerequisite picker
+│   │   ├── ProjectEditor.tsx  # Project fields: name, dates, status, priority, context
+│   │   ├── NoteEditor.tsx     # Note fields: title, content, calendar, project
+│   │   ├── ConflictBanner.tsx  # ETag conflict resolution (Overwrite / Reload)
+│   │   └── DraftBanner.tsx     # Unsaved changes restoration prompt
 │   │
-│   ├── kanban/               # Kanban board components (planned Phase 7)
+│   ├── kanban/               # Kanban board components (Phase 5 tasks, planned Phase 7 projects)
 │   │
 │   └── ai/                   # AI chat components (planned Phase 10)
 │
@@ -429,18 +436,28 @@ Panel sizes are persisted to localStorage via `react-resizable-panels` `id` prop
 </MainPane>
 ```
 
-### DetailPane Mode Switch
+### DetailPane Entity Router
 
 ```tsx
 <DetailPane>
-  {selectedEntity ? (
-    <ResizableVerticalSplit>
-      <EditorForm entity={selectedEntity} />   // Top
-      <MiniChat context={selectedEntity} />     // Bottom
-    </ResizableVerticalSplit>
-  ) : (
-    <ChatPanel context={activeViewContext} />   // Full AI chat
-  )}
-  {conflict && <ConflictBanner />}
+  // Resolves selectedEntityId from useUIStore, determines type from which
+  // store map it belongs to, then routes to the correct editor.
+  // Key prop on uid ensures unmount/remount when switching entities.
+  {!selectedEntityId && <EmptyState />}
+  {type === 'event'   && <EventEditor key={uid} event={entity} />}
+  {type === 'task'    && <TaskEditor key={uid} task={entity} />}
+  {type === 'project' && <ProjectEditor key={uid} project={entity} />}
+  {type === 'note'    && <NoteEditor key={uid} note={entity} />}
 </DetailPane>
 ```
+
+### Editor Lifecycle (`useEditorForm` Hook)
+
+All four editors share the same lifecycle via `useEditorForm<T>`:
+
+1. **Mount**: Check `useDraftStore` for existing draft. If found, populate form from draft and show `DraftBanner`. Otherwise, populate from entity.
+2. **Edit**: `setField()` updates local state and schedules debounced draft save (500ms) to `useDraftStore`.
+3. **Save (Ctrl+S or button)**: Serialize entity, call `putXxx(entity, etag)`. On success: update `useGraphStore`, clear draft. On 412: show `ConflictBanner`.
+4. **Conflict resolution**: "Overwrite" re-fetches fresh etag then retries PUT. "Reload" resets form to server data and clears draft.
+5. **Discard**: Clears draft, resets form to entity's current server data.
+6. **Unmount**: Draft remains in `useDraftStore` for restoration on next selection.
