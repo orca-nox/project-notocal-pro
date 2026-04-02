@@ -336,6 +336,19 @@ A phased build plan, ordered by dependency. Each phase produces a working (if in
 
 ---
 
+### Bug Fixes: CalDAV Interoperability & Sync (between Phase 3 → 4)
+
+These issues were discovered during Phase 4 development and testing with real-world CalDAV clients.
+
+- [x] **Fix: New calendars not auto-enabled.** `enabledCalendars` was persisted in localStorage. After the first load, `enabledCalendars.size === 0` was never true again, so calendars added later (Travel, Work) were never auto-enabled. Fixed with `autoEnableCalendars()` that detects and enables missing calendar IDs after every sync.
+- [x] **Fix: Entity classification duck-typing.** `fetchAll()` used fragile `'location' in entity` checks to classify parsed entities. Replaced with direct parser calls (`parseEvent` → `parseTask` → `parseNote`), each checking the iCal component type.
+- [x] **Fix: VTIMEZONE shadowing event properties.** DAVx5 and other clients embed `VTIMEZONE` blocks containing their own `DTSTART` properties. The `prop()` function searched the entire `.ics` string, matching timezone properties instead of event properties. Fixed by extracting only the target component block (`BEGIN:VEVENT...END:VEVENT`) before parsing properties.
+- [x] **Fix: Events with DURATION instead of DTEND dropped.** RFC 5545 allows `DURATION` as an alternative to `DTEND`. Events from clients using `DURATION` were silently dropped because `parseEvent` required `DTEND`. Added `computeDtend(dtstart, duration)` fallback.
+- [x] **Fix: visibilitychange listener leak.** The cleanup function removed the wrong reference (`onFocus` instead of the anonymous `visibilitychange` handler). Each re-render leaked a new listener. Fixed by naming both handlers.
+- [x] **Fix: Server edits not reflected on sync.** Combination of the above issues. With `replaceEntities` (full replace) and correct parsing, edits from other devices now appear on tab focus.
+
+---
+
 ### Phase 4: Calendar View (View [2])
 
 **Goal:** A functional month/week calendar grid displaying real events from Radicale.

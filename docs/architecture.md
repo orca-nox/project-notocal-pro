@@ -20,9 +20,10 @@ This document defines the codebase structure, module responsibilities, data flow
 ```
 src/
 ├── hooks/                    # Data fetching & CalDAV operations
-│   ├── useCalDAV.ts          # Core CalDAV client hook
-│   ├── useSync.ts            # Sync-on-focus and periodic sync
-│   └── useBootstrap.ts       # First-launch collection setup
+│   ├── useCalDAV.ts          # Core CalDAV client hook (fetch, put, delete)
+│   ├── useSync.ts            # Sync-on-focus with auto calendar enablement
+│   ├── useBootstrap.ts       # First-launch collection setup
+│   └── useKeyboardShortcuts.ts # Global keyboard shortcuts (1-4 views, Esc)
 │
 ├── store/                    # Zustand state management
 │   ├── useGraphStore.ts      # Entity relationship graph
@@ -32,13 +33,17 @@ src/
 │
 ├── lib/                      # Pure utilities (no React dependencies)
 │   ├── caldav/               # CalDAV protocol helpers
-│   │   ├── client.ts         # tsdav wrapper / configuration
-│   │   ├── parser.ts         # .ics parsing (VEVENT, VTODO, VJOURNAL)
-│   │   └── serializer.ts     # Entity -> .ics string conversion
+│   │   ├── client.ts         # tsdav wrapper (bypasses service discovery)
+│   │   ├── config.ts         # CalDAV config from environment variables
+│   │   ├── parser.ts         # .ics parsing with VTIMEZONE isolation & DURATION support
+│   │   ├── serializer.ts     # Entity -> .ics string conversion
+│   │   └── dateUtils.ts      # Date math helpers (addDays, startOfWeek, formatICalDate, etc.)
 │   ├── markdown/             # Markdown parsing for task descriptions
 │   │   ├── subtasks.ts       # Parse/serialize sub-task checklists
 │   │   └── prerequisites.ts  # Parse/serialize prerequisite links
-│   └── graph.ts              # RELATED-TO graph construction logic
+│   ├── cache.ts              # IndexedDB layer via idb (replaceAllCached, per-entity CRUD)
+│   ├── graph.ts              # RELATED-TO graph construction logic
+│   └── utils.ts              # General utilities (cn, etc.)
 │
 ├── components/
 │   ├── ui/                   # Dumb components (shadcn/ui, stateless)
@@ -48,47 +53,42 @@ src/
 │   │   ├── dialog.tsx
 │   │   ├── dropdown-menu.tsx
 │   │   ├── input.tsx
-│   │   ├── command.tsx        # Omnibar / command palette (Ctrl+K)
-│   │   └── ...
+│   │   ├── input-group.tsx
+│   │   ├── textarea.tsx
+│   │   ├── separator.tsx
+│   │   ├── tooltip.tsx
+│   │   └── command.tsx        # Omnibar / command palette (Ctrl+K)
 │   │
-│   ├── panes/                # Smart panes (the three columns)
-│   │   ├── Sidebar.tsx        # Column 1: search, calendar toggles
+│   ├── panes/                # Smart panes (the three columns + top nav)
+│   │   ├── Sidebar.tsx        # Column 1: search, nav items, calendar toggles
+│   │   ├── TopNav.tsx         # Slide-down nav bar with view switcher + pin
 │   │   ├── MainPane.tsx       # Column 2: view router
-│   │   └── DetailPane.tsx     # Column 3: AI chat + editor form
+│   │   └── DetailPane.tsx     # Column 3: entity detail / empty state
 │   │
 │   ├── views/                # Column 2 view implementations
-│   │   ├── ProjectsView.tsx   # [1] Kanban boards
-│   │   ├── CalendarView.tsx   # [2] Month/Week grid
-│   │   ├── TasksView.tsx      # [3] Hierarchical list / Global Kanban
-│   │   └── NotesView.tsx      # [4] Notes aggregator + editor
+│   │   ├── ProjectsView.tsx   # [1] Project list with children + unassigned
+│   │   ├── CalendarView.tsx   # [2] Month/Week grid with event CRUD
+│   │   ├── TasksView.tsx      # [3] Filtered task list
+│   │   └── NotesView.tsx      # [4] Notes list with description preview
 │   │
-│   ├── editors/              # Column 3 editor forms
-│   │   ├── EventEditor.tsx
-│   │   ├── TaskEditor.tsx
-│   │   ├── ProjectEditor.tsx
-│   │   └── NoteEditor.tsx     # (or inline in NotesView)
+│   ├── calendar/             # Calendar grid components (Phase 4)
+│   │   ├── MonthGrid.tsx      # Month grid with date cells + event chips
+│   │   ├── WeekGrid.tsx       # 7-day hourly grid with drag move/resize
+│   │   ├── EventBlock.tsx     # Colored event chip/block for both grids
+│   │   └── QuickAddModal.tsx  # Lightweight event creation dialog
 │   │
-│   ├── kanban/               # Kanban board components
-│   │   ├── KanbanBoard.tsx
-│   │   ├── KanbanColumn.tsx
-│   │   └── KanbanCard.tsx
+│   ├── editors/              # Column 3 editor forms (planned Phase 6)
 │   │
-│   ├── calendar/             # Calendar grid components
-│   │   ├── MonthGrid.tsx
-│   │   ├── WeekGrid.tsx
-│   │   └── EventBlock.tsx
+│   ├── kanban/               # Kanban board components (planned Phase 7)
 │   │
-│   └── ai/                   # AI chat components
-│       ├── ChatPanel.tsx
-│       ├── MiniChat.tsx
-│       └── ConflictBanner.tsx
+│   └── ai/                   # AI chat components (planned Phase 10)
 │
 ├── types/                    # TypeScript type definitions
 │   ├── entities.ts            # Event, Task, Note, Project types
 │   ├── caldav.ts              # CalDAV response types
 │   └── store.ts               # Store state types
 │
-├── App.tsx                   # Root layout (three columns + top nav)
+├── App.tsx                   # Root layout (Sidebar + resizable panels + TopNav)
 ├── main.tsx                  # Vite entry point
 └── index.css                 # Tailwind base styles
 ```
@@ -115,9 +115,9 @@ The single most important hook. Owns the entire CalDAV lifecycle:
 
 | Responsibility | Description |
 |---|---|
-| **Tab focus sync** | Listens for the `visibilitychange` / `focus` event. When the browser tab regains focus, silently triggers a WebDAV `sync-collection` report to pull in changes made from other devices (e.g., a mobile CalDAV client). |
-| **Periodic sync** | Optional background polling interval (e.g., every 5 minutes) as a fallback. |
-| **Delta processing** | Compares incoming ETags with cached ETags. Only processes changed/new/deleted entities. |
+| **Tab focus sync** | Listens for `visibilitychange` and `focus` events. When the browser tab regains focus, triggers a full fetch from Radicale and calls `replaceEntities` for a complete store refresh (handles adds, edits, and deletions). |
+| **Cache-first cold start** | Loads entities from IndexedDB cache for instant UI, then syncs from Radicale in the background. |
+| **Auto-enable calendars** | After each sync, detects any new calendars not yet in `enabledCalendars` and auto-enables them. Uses `useFilterStore.getState()` to avoid stale closure issues. |
 
 #### `useBootstrap` — First-Launch Setup
 
@@ -183,9 +183,19 @@ These are **pure functions with no React dependencies**, making them testable in
 
 Parses raw `.ics` strings (from `tsdav` responses) into typed TypeScript objects (`Event`, `Task`, `Note`, `Project`). Handles:
 
-- Standard property extraction (SUMMARY, DTSTART, etc.)
+- **Component block isolation:** Extracts the target component (VEVENT/VTODO/VJOURNAL) block before reading properties, preventing `VTIMEZONE` properties (e.g., `DTSTART` inside `STANDARD`/`DAYLIGHT` sub-components) from shadowing the actual event/task data. This is critical for interoperability with clients like DAVx5 that embed timezone definitions.
+- **DURATION → DTEND fallback:** If a VEVENT lacks `DTEND` but has a `DURATION` property (valid per RFC 5545 §3.3.6), the parser computes `DTEND` from `DTSTART + DURATION`. Supports weeks, days, hours, minutes, and seconds.
+- Standard property extraction (SUMMARY, DTSTART, etc.) with iCal line unfolding
 - Custom `X-` property extraction (X-PROJECT-STATUS, X-PROJECT-PRIORITY)
 - RELATED-TO extraction for graph construction
+
+#### `lib/caldav/dateUtils.ts`
+
+Pure date math helpers used by the calendar views. Avoids external date libraries:
+
+- `addDays`, `addMonths`, `startOfWeek`, `startOfMonth`
+- `formatMonthYear`, `formatWeekRange`, `formatICalDate`
+- iCal datetime string ↔ `Date` object conversion
 
 #### `lib/caldav/serializer.ts`
 
@@ -276,20 +286,20 @@ The three columns of the application. Each pane:
 ### Sync-on-Focus
 
 ```
-1. User returns to browser tab (focus event)
+1. User returns to browser tab (focus / visibilitychange event)
          │
-2. useSync: WebDAV sync-collection report to Radicale
+2. useSync: Full fetch from Radicale (all calendars + projects collection)
          │
-3. Compare incoming ETags with cached ETags
+3. replaceAllCached: Clear and rewrite IndexedDB with fresh data
          │
-4. Fetch full entities only for changed/new items
+4. useGraphStore.replaceEntities: Full replace of all entity maps
          │
-5. Update IndexedDB cache
+5. autoEnableCalendars: Enable any new calendars not yet in filter set
          │
-6. useGraphStore: Merge changes, re-derive graph
-         │
-7. UI updates reactively (items appear/disappear/change)
+6. UI updates reactively (adds, edits, and deletions all reflected)
 ```
+
+> **Note:** The current sync strategy uses full-fetch + full-replace rather than incremental delta sync. This is simple and correct — it handles additions, edits, and deletions uniformly. ETag-based delta sync (`sync-collection` REPORT) is a future optimization for large datasets.
 
 ---
 
@@ -309,10 +319,10 @@ Radicale doesn't support WebSocket push notifications. The sync strategy is:
 
 | Trigger | Method |
 |---|---|
-| App load | Full sync (compare all ETags) |
-| Tab focus | Delta sync (`sync-collection`) |
-| After write | Local optimistic update + background verify |
-| Periodic | Optional polling every N minutes |
+| App load | Cache-first render, then full sync from Radicale |
+| Tab focus / visibility | Full fetch + replaceEntities (handles adds, edits, deletions) |
+| After write | Optimistic local update via `updateEntity` |
+| Periodic | Not yet implemented (planned future enhancement) |
 
 For a single-user deployment, this is more than sufficient — the only "external" changes come from mobile CalDAV clients, and those are picked up within seconds of switching back to the desktop app.
 
@@ -388,18 +398,25 @@ Zustand supports multiple independent stores, which is preferable to a single mo
 ### App Shell
 
 ```tsx
-<App>
-  <TopNav />                          // Slide-down navigation bar
-  <div className="flex h-screen">
-    <Sidebar />                       // Column 1 (fixed width)
-    <MainPane />                      // Column 2 (flexible)
-    <ResizableDivider />              // Drag handle between Col 2 & 3
-    <DetailPane />                    // Column 3 (flexible)
+<App>                                       // flex h-screen, dark mode
+  <Sidebar />                               // Fixed 240px, outside PanelGroup
+  <div className="flex-1 flex-col">
+    <TopNav />                              // position: fixed, slide-down on mouse proximity
+    {navPinned && <Spacer />}               // 44px spacer when nav is pinned
+    <Group orientation="horizontal">        // react-resizable-panels, id="notocal-panels"
+      <Panel defaultSize={65} minSize={40}>
+        <MainPane />                        // Column 2: view router
+      </Panel>
+      <Separator />                         // Drag handle between Col 2 & 3
+      <Panel defaultSize={35} minSize={20}>
+        <DetailPane />                      // Column 3: entity detail
+      </Panel>
+    </Group>
   </div>
-  <SearchOverlay />                   // Ctrl+K omnibar (modal)
-  <QuickAddModal />                   // C key modal (calendar view)
 </App>
 ```
+
+Panel sizes are persisted to localStorage via `react-resizable-panels` `id` prop. The Sidebar is **outside** the PanelGroup (fixed width), so only MainPane and DetailPane are resizable.
 
 ### MainPane View Router
 
