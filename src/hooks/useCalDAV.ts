@@ -84,9 +84,22 @@ export function useCalDAV() {
     const notes: Note[] = []
     const projects: Project[] = []
 
+    // Custom filter: fetch ALL component types (VEVENT, VTODO, VJOURNAL).
+    // tsdav defaults to VEVENT-only if no filters are provided.
+    const allComponentsFilter = [
+      {
+        'comp-filter': {
+          _attributes: { name: 'VCALENDAR' },
+        },
+      },
+    ]
+
     // Fetch from each user calendar
     for (const cal of calendars) {
-      const objects = await dav.fetchCalendarObjects({ calendar: { url: cal.url } as Parameters<typeof dav.fetchCalendarObjects>[0]['calendar'] })
+      const objects = await dav.fetchCalendarObjects({
+        calendar: { url: cal.url } as Parameters<typeof dav.fetchCalendarObjects>[0]['calendar'],
+        filters: allComponentsFilter,
+      })
 
       for (const obj of objects) {
         const ics = obj.data as string | undefined
@@ -106,7 +119,10 @@ export function useCalDAV() {
 
     // Fetch projects
     if (projectsUrl) {
-      const objects = await dav.fetchCalendarObjects({ calendar: { url: projectsUrl } as Parameters<typeof dav.fetchCalendarObjects>[0]['calendar'] })
+      const objects = await dav.fetchCalendarObjects({
+        calendar: { url: projectsUrl } as Parameters<typeof dav.fetchCalendarObjects>[0]['calendar'],
+        filters: allComponentsFilter,
+      })
       for (const obj of objects) {
         const ics = obj.data as string | undefined
         if (!ics) continue
@@ -134,18 +150,46 @@ export function useCalDAV() {
     return { calendars, events, tasks, notes, projects }
   }, [])
 
+  /**
+   * Create or update a calendar object.
+   * Uses createCalendarObject (If-None-Match: *) for new objects,
+   * and updateCalendarObject (If-Match: etag) for existing ones.
+   */
+  const putCalendarObject = useCallback(async (
+    dav: Awaited<ReturnType<typeof client>>,
+    collectionUrl: string,
+    uid: string,
+    ics: string,
+    ifMatch?: string,
+  ): Promise<{ etag: string }> => {
+    const objectUrl = `${collectionUrl.replace(/\/$/, '')}/${uid}.ics`
+    if (ifMatch) {
+      const result = await dav.updateCalendarObject({
+        calendarObject: {
+          url: objectUrl,
+          data: ics,
+          etag: ifMatch,
+        } as Parameters<typeof dav.updateCalendarObject>[0]['calendarObject'],
+      })
+      const etag = (result as Response)?.headers?.get?.('etag') ?? ''
+      return { etag }
+    } else {
+      const result = await dav.createCalendarObject({
+        calendar: { url: collectionUrl } as Parameters<typeof dav.createCalendarObject>[0]['calendar'],
+        filename: `${uid}.ics`,
+        iCalString: ics,
+      })
+      const etag = (result as Response)?.headers?.get?.('etag') ?? ''
+      return { etag }
+    }
+  }, [client])
+
   /** Create or update an event */
   const putEvent = useCallback(async (event: Event, ifMatch?: string): Promise<WriteResult> => {
     const dav = await client()
     const ics = serializeEvent(event)
     try {
-      const result = await dav.createCalendarObject({
-        calendar: { url: event.calendarId } as Parameters<typeof dav.createCalendarObject>[0]['calendar'],
-        filename: `${event.uid}.ics`,
-        iCalString: ics,
-        headers: ifMatch ? { 'If-Match': ifMatch } : undefined,
-      })
-      const etag = (result as Response)?.headers?.get?.('etag') ?? ''
+      const { etag } = await putCalendarObject(dav, event.calendarId, event.uid, ics, ifMatch)
       const updated = { ...event, etag, rawIcs: ics }
       await cacheEvents([updated])
       return { ok: true, etag }
@@ -155,20 +199,14 @@ export function useCalDAV() {
       }
       return { ok: false, status: 0, message: String(err) }
     }
-  }, [client])
+  }, [client, putCalendarObject])
 
   /** Create or update a task */
   const putTask = useCallback(async (task: Task, ifMatch?: string): Promise<WriteResult> => {
     const dav = await client()
     const ics = serializeTask(task)
     try {
-      const result = await dav.createCalendarObject({
-        calendar: { url: task.calendarId } as Parameters<typeof dav.createCalendarObject>[0]['calendar'],
-        filename: `${task.uid}.ics`,
-        iCalString: ics,
-        headers: ifMatch ? { 'If-Match': ifMatch } : undefined,
-      })
-      const etag = (result as Response)?.headers?.get?.('etag') ?? ''
+      const { etag } = await putCalendarObject(dav, task.calendarId, task.uid, ics, ifMatch)
       const updated = { ...task, etag, rawIcs: ics }
       await cacheTasks([updated])
       return { ok: true, etag }
@@ -178,20 +216,14 @@ export function useCalDAV() {
       }
       return { ok: false, status: 0, message: String(err) }
     }
-  }, [client])
+  }, [client, putCalendarObject])
 
   /** Create or update a note */
   const putNote = useCallback(async (note: Note, ifMatch?: string): Promise<WriteResult> => {
     const dav = await client()
     const ics = serializeNote(note)
     try {
-      const result = await dav.createCalendarObject({
-        calendar: { url: note.calendarId } as Parameters<typeof dav.createCalendarObject>[0]['calendar'],
-        filename: `${note.uid}.ics`,
-        iCalString: ics,
-        headers: ifMatch ? { 'If-Match': ifMatch } : undefined,
-      })
-      const etag = (result as Response)?.headers?.get?.('etag') ?? ''
+      const { etag } = await putCalendarObject(dav, note.calendarId, note.uid, ics, ifMatch)
       const updated = { ...note, etag, rawIcs: ics }
       await cacheNotes([updated])
       return { ok: true, etag }
@@ -201,7 +233,7 @@ export function useCalDAV() {
       }
       return { ok: false, status: 0, message: String(err) }
     }
-  }, [client])
+  }, [client, putCalendarObject])
 
   /** Create or update a project */
   const putProject = useCallback(async (project: Project, ifMatch?: string): Promise<WriteResult> => {
@@ -212,13 +244,7 @@ export function useCalDAV() {
     }
     const ics = serializeProject(project)
     try {
-      const result = await dav.createCalendarObject({
-        calendar: { url: projectsUrl } as Parameters<typeof dav.createCalendarObject>[0]['calendar'],
-        filename: `${project.uid}.ics`,
-        iCalString: ics,
-        headers: ifMatch ? { 'If-Match': ifMatch } : undefined,
-      })
-      const etag = (result as Response)?.headers?.get?.('etag') ?? ''
+      const { etag } = await putCalendarObject(dav, projectsUrl, project.uid, ics, ifMatch)
       const updated = { ...project, etag, rawIcs: ics }
       await cacheProjects([updated])
       return { ok: true, etag }
@@ -228,7 +254,7 @@ export function useCalDAV() {
       }
       return { ok: false, status: 0, message: String(err) }
     }
-  }, [client, getProjectsCollectionUrl])
+  }, [client, putCalendarObject, getProjectsCollectionUrl])
 
   /** Delete an event */
   const deleteEvent = useCallback(async (event: Event): Promise<void> => {

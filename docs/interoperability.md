@@ -115,6 +115,14 @@ The `prop()` function:
 2. Matches property names with optional parameters (e.g., `DTSTART;TZID=Asia/Manila:...`).
 3. Returns only the value portion after the colon.
 
+### Custom Fetch Filter (All Component Types)
+
+`tsdav`'s `fetchCalendarObjects` defaults to a `comp-filter` that only requests `VEVENT` components. This means VTODOs (tasks) and VJOURNALs (notes) are silently excluded from server responses. Notocal Pro overrides this by passing a custom filter that specifies only the top-level `VCALENDAR` component with no nested component filter, which tells the server to return all objects regardless of type.
+
+### Create vs. Update Distinction
+
+`tsdav` provides separate methods for creating and updating calendar objects. `createCalendarObject` sends `If-None-Match: *` (reject if exists), while `updateCalendarObject` sends `If-Match: <etag>` (reject if modified). Notocal Pro's `putCalendarObject` helper dispatches to the correct method based on whether an etag is provided.
+
 ### Direct Parser Calls
 
 Entity classification in `fetchAll()` uses direct parser calls (`parseEvent` → `parseTask` → `parseNote`) rather than duck-typing on property presence. Each parser checks the iCal component type (`BEGIN:VEVENT`, `BEGIN:VTODO`, `BEGIN:VJOURNAL`) for reliable classification.
@@ -130,6 +138,8 @@ Entity classification in `fetchAll()` uses direct parser calls (`parseEvent` →
 | RRULE recurring events | **Not supported (v1)** | Deferred to future version; duplicate button as workaround |
 | VALARM sub-components | **Ignored** | No alarm/notification support in v1 |
 | VTIMEZONE timezone conversion | **Partial** | Parser extracts TZID-qualified values as-is; no timezone conversion to local time |
+| tsdav default VEVENT-only filter | **Fixed** | Custom comp-filter fetches all component types (VEVENT, VTODO, VJOURNAL) |
+| tsdav create vs update methods | **Fixed** | `putCalendarObject` helper uses `createCalendarObject` for new objects, `updateCalendarObject` for existing |
 
 ---
 
