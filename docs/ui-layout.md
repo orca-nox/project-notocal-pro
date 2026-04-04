@@ -10,7 +10,8 @@ This document defines the multi-pane desktop layout, per-view behavior, keyboard
 2. [Top Navigation Bar](#2-top-navigation-bar)
 3. [Column 1: Global Sidebar](#3-column-1-global-sidebar)
 4. [Column 2: Main Context Pane](#4-column-2-main-context-pane)
-5. [Column 3: AI & Detail Pane](#5-column-3-ai--detail-pane)
+5. [Column 3: Detail Pane](#5-column-3-detail-pane)
+5b. [Floating AI Chat Widget](#5b-floating-ai-chat-widget)
 6. [Keyboard Shortcuts](#6-keyboard-shortcuts)
 7. [Draft Management](#7-draft-management)
 8. [Responsive Behavior](#8-responsive-behavior)
@@ -25,7 +26,7 @@ This document defines the multi-pane desktop layout, per-view behavior, keyboard
 │   [1] Projects   [2] Calendar   [3] Tasks   [4] Notes   [Pin]   │
 ├────────────┬──────────────────────────────┬───────────────────────┤
 │  Column 1  │         Column 2             │       Column 3        │
-│  Sidebar   │     Main Context Pane        │   AI & Detail Pane    │
+│  Sidebar   │     Main Context Pane        │    Detail Pane        │
 │            │                              │                       │
 │  200-250px │      Flexible (largest)      │   Flexible (right)    │
 │   Fixed    │                              │                       │
@@ -206,7 +207,7 @@ This ensures notes created within a Project's Kanban board (View [1]) are always
 
 When a note is selected, the Notes view has **two modes**:
 
-1. **Split mode:** The folder list stays visible on the left, the note list in the middle, and the selected note's content on the right (still within Column 2). Column 3 shows the AI assistant.
+1. **Split mode:** The folder list stays visible on the left, the note list in the middle, and the selected note's content on the right (still within Column 2). Column 3 shows entity details if selected.
 2. **Full mode:** The markdown editor expands to take over the entire Column 2 area, maximizing writing space. The folder list is temporarily hidden. Toggle via a button or shortcut.
 
 #### Markdown Editor
@@ -218,50 +219,19 @@ When a note is selected, the Notes view has **two modes**:
 
 ---
 
-## 5. Column 3: AI & Detail Pane
+## 5. Column 3: Detail Pane
 
 **Width:** Flexible, right-aligned. Can be resized by dragging the divider between Columns 2 and 3.
 
-Column 3 is **context-sensitive** and operates in two modes:
+Column 3 is a **pure detail/editor pane**. It shows entity editors when an item is selected, and an empty state otherwise.
 
-### Default State: AI Assistant
+### Default State: Empty
 
-When **no item is selected** for editing, Column 3 displays the **AI chat interface**:
+When **no item is selected**, Column 3 displays a placeholder: *"Select an item to view details."*
 
-- A conversational chat panel with message history.
-- The AI has **full context** of the currently active view:
-  - In Projects view: awareness of all visible projects and their items.
-  - In Calendar view: awareness of the current date range and visible events.
-  - In Tasks view: awareness of the current filter set and visible tasks.
-  - In Notes view: awareness of the currently open note (if any).
-- Users can ask the AI to:
-  - Summarize their schedule.
-  - Suggest task prioritization.
-  - Draft note content.
-  - Identify scheduling conflicts.
-  - Provide context from related items.
+### Active State: Editor
 
-### Active State: Editor + Mini-AI
-
-When a user **explicitly selects an item** for deep editing (clicks an event, task, or project card), Column 3 **splits vertically** with a **user-resizable drag divider**:
-
-```
-┌─────────────────────┐
-│                     │
-│   Editor Form       │
-│   (Top section)     │
-│                     │
-├─ ─ drag divider ─ ─ ┤
-│                     │
-│   Mini-AI Chat      │
-│   (Bottom section)  │
-│                     │
-└─────────────────────┘
-```
-
-#### Editor Form (Top)
-
-A structured form for editing the selected entity's properties:
+When a user **explicitly selects an item** (clicks an event, task, or project card), Column 3 shows the full editor form:
 
 **For Events:**
 - Title (SUMMARY)
@@ -290,16 +260,54 @@ A structured form for editing the selected entity's properties:
 - Status (X-PROJECT-STATUS) — dropdown
 - Priority (X-PROJECT-PRIORITY) — number input
 
-#### Mini-AI Chat (Bottom)
-
-A compressed version of the AI chat, maintaining conversation context. The AI is now aware of the **specific item being edited** and can provide targeted assistance (e.g., "suggest a better title," "what's blocking this task?").
-
 ### Conflict Resolution UI
 
 When a CalDAV ETag conflict is detected during save, Column 3 surfaces a **conflict banner** above the editor form:
 
 > **Conflict detected:** This item was modified externally since you opened it.
 > `[Overwrite with my changes]` `[Reload server version]`
+
+---
+
+## 5b. Floating AI Chat Widget
+
+The AI assistant lives **outside** the three-column layout as a floating overlay in the bottom-right corner, similar to a messenger widget (e.g., Intercom, Drift).
+
+### Collapsed State: Chat Bubble
+
+- A circular floating button (`fixed`, bottom-right, high `z-index`).
+- Displays a chat icon. Pulses when the AI is streaming a response.
+- Clicking toggles the chat panel open/closed.
+- Keyboard shortcut: `Ctrl+.` to toggle.
+
+### Expanded State: Chat Panel
+
+```
+                              ┌──────────────────┐
+                              │  Notocal AI   ✕  │
+                              ├──────────────────┤
+                              │                  │
+                              │  Message history │
+                              │  (scrollable)    │
+                              │                  │
+                              │  AI: Here's...   │
+                              │  User: Can you...│
+                              │                  │
+                              ├──────────────────┤
+                              │ [Type a message] │
+                              │              [→] │
+                              └──────────────────┘
+                                            [💬]
+```
+
+- Panel dimensions: ~400×500px, anchored bottom-right.
+- **Message history** with scrollable container, auto-scrolls to bottom.
+- **Input box** with send button. `Enter` to send, `Shift+Enter` for newline.
+- **Streaming responses** rendered token-by-token with markdown support.
+- **Header** with title, clear-conversation button, and close button.
+- **Context-aware:** the AI receives context about the current view and selected entity (see Phase 9 in plan.md for details).
+
+The chat widget **does not** interfere with the three-column layout. It floats above all content and can be used alongside any view or editor.
 
 ---
 
@@ -314,7 +322,8 @@ When a CalDAV ETag conflict is detected during save, Column 3 surfaces a **confl
 | `3` | Switch to Tasks view |
 | `4` | Switch to Notes view |
 | `Ctrl+K` | Open global search omnibar |
-| `Escape` | Close modal / deselect item / close search |
+| `Ctrl+.` | Toggle AI chat widget |
+| `Escape` | Close modal / deselect item / close search / close AI chat |
 
 ### Context-Sensitive
 
