@@ -15,6 +15,7 @@ interface DeleteTaskDialogProps {
   onOpenChange: (open: boolean) => void
   onConfirm: (task: Task) => void
   dependentCount: number
+  subtaskCount: number
 }
 
 export function DeleteTaskDialog({
@@ -23,6 +24,7 @@ export function DeleteTaskDialog({
   onOpenChange,
   onConfirm,
   dependentCount,
+  subtaskCount,
 }: DeleteTaskDialogProps) {
   if (!task) return null
 
@@ -33,9 +35,9 @@ export function DeleteTaskDialog({
           <DialogTitle>Delete Task</DialogTitle>
           <DialogDescription>
             Are you sure you want to delete "{task.summary}"?
-            {task.subtasks.length > 0 && (
+            {subtaskCount > 0 && (
               <span className="block mt-1">
-                This task has {task.subtasks.length} sub-task{task.subtasks.length > 1 ? 's' : ''} that will also be removed.
+                This task has {subtaskCount} sub-task{subtaskCount > 1 ? 's' : ''} that will also be deleted.
               </span>
             )}
             {dependentCount > 0 && (

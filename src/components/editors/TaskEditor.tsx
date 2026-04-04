@@ -1,9 +1,11 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Save, Trash2, Plus, X } from 'lucide-react'
+import { Save, Trash2, X, Plus, Search } from 'lucide-react'
 import { useEditorForm } from '@/hooks/useEditorForm'
 import { useGraphStore } from '@/store/useGraphStore'
 import { useUIStore } from '@/store/useUIStore'
-import { icalToHtmlDatetime, htmlDatetimeToIcal } from '@/lib/caldav/dateUtils'
+import { useCalDAV } from '@/hooks/useCalDAV'
+import { icalToHtmlDatetime, htmlDatetimeToIcal, formatICalDate } from '@/lib/caldav/dateUtils'
+import { serializeTask } from '@/lib/caldav/serializer'
 import { ConflictBanner } from './ConflictBanner'
 import { DraftBanner } from './DraftBanner'
 import { Input } from '@/components/ui/input'
@@ -11,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import type { Entity, Task, TaskStatus, SubTask, Prerequisite } from '@/types/entities'
+import type { Entity, Task, TaskStatus, TaskRef } from '@/types/entities'
 
 interface TaskFormData extends Record<string, unknown> {
   summary: string
@@ -21,8 +23,7 @@ interface TaskFormData extends Record<string, unknown> {
   description: string
   calendarId: string
   relatedTo: string
-  subtasks: SubTask[]
-  prerequisites: Prerequisite[]
+  prerequisites: TaskRef[]
 }
 
 function toFormData(entity: Entity): TaskFormData {
@@ -35,7 +36,6 @@ function toFormData(entity: Entity): TaskFormData {
     description: t.description ?? '',
     calendarId: t.calendarId,
     relatedTo: t.relatedTo ?? '',
-    subtasks: [...t.subtasks],
     prerequisites: [...t.prerequisites],
   }
 }
@@ -51,16 +51,173 @@ function toEntity(formData: TaskFormData, original: Entity): Task {
     description: formData.description || undefined,
     calendarId: formData.calendarId,
     relatedTo: formData.relatedTo || undefined,
-    subtasks: formData.subtasks,
     prerequisites: formData.prerequisites,
   }
 }
+
+// ---------------------------------------------------------------------------
+// Shared task-picker component for both subtasks and prerequisites
+// ---------------------------------------------------------------------------
+
+interface TaskPickerProps {
+  label: string
+  tasks: TaskRef[]
+  allTasks: Map<string, Task>
+  excludeUids: Set<string>
+  currentTaskUid: string
+  onAdd: (ref: TaskRef) => void
+  onCreate: (title: string) => void
+  onRemove: (uid: string) => void
+  onToggle?: (uid: string) => void
+  onNavigate?: (uid: string) => void
+  showStatus?: boolean
+}
+
+function TaskPicker({
+  label,
+  tasks,
+  allTasks,
+  excludeUids,
+  currentTaskUid,
+  onAdd,
+  onCreate,
+  onRemove,
+  onToggle,
+  onNavigate,
+  showStatus,
+}: TaskPickerProps) {
+  const [search, setSearch] = useState('')
+  const [mode, setMode] = useState<'search' | 'create'>('search')
+
+  const availableTasks = useMemo(() => {
+    if (!search) return []
+    const q = search.toLowerCase()
+    return Array.from(allTasks.values())
+      .filter((t) => t.uid !== currentTaskUid && !excludeUids.has(t.uid) && t.summary.toLowerCase().includes(q))
+      .slice(0, 8)
+  }, [allTasks, search, currentTaskUid, excludeUids])
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && search.trim()) {
+      e.preventDefault()
+      if (mode === 'create') {
+        onCreate(search.trim())
+        setSearch('')
+      } else if (availableTasks.length > 0) {
+        onAdd({ uid: availableTasks[0].uid, title: availableTasks[0].summary })
+        setSearch('')
+      }
+    }
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <label className="text-xs font-medium text-muted-foreground">{label}</label>
+        <div className="flex items-center gap-0.5">
+          <Button
+            size="sm"
+            variant={mode === 'search' ? 'secondary' : 'ghost'}
+            className="h-5 px-1.5 text-[10px]"
+            onClick={() => setMode('search')}
+            title="Search existing tasks"
+          >
+            <Search className="h-3 w-3" />
+          </Button>
+          <Button
+            size="sm"
+            variant={mode === 'create' ? 'secondary' : 'ghost'}
+            className="h-5 px-1.5 text-[10px]"
+            onClick={() => setMode('create')}
+            title="Create new task"
+          >
+            <Plus className="h-3 w-3" />
+          </Button>
+        </div>
+      </div>
+
+      {tasks.length > 0 && (
+        <div className="space-y-1">
+          {tasks.map((ref) => {
+            const resolved = allTasks.get(ref.uid)
+            const title = resolved?.summary ?? ref.title
+            const isCompleted = resolved?.status === 'COMPLETED'
+            return (
+              <div key={ref.uid} className="flex items-center gap-2 rounded-md bg-secondary px-2 py-1 text-xs">
+                {showStatus && onToggle && (
+                  <Checkbox
+                    checked={isCompleted}
+                    onCheckedChange={() => onToggle(ref.uid)}
+                    className="h-3.5 w-3.5"
+                  />
+                )}
+                <span
+                  className={`flex-1 truncate ${isCompleted && showStatus ? 'line-through text-muted-foreground' : ''} ${onNavigate ? 'cursor-pointer hover:underline' : ''}`}
+                  onClick={() => onNavigate?.(ref.uid)}
+                >
+                  {title}
+                </span>
+                <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => onRemove(ref.uid)}>
+                  <X className="h-3 w-3 text-muted-foreground" />
+                </Button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      <div className="relative">
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="h-7 text-xs"
+          placeholder={mode === 'search' ? `Search tasks to add as ${label.toLowerCase()}...` : `Type name and press Enter to create...`}
+        />
+        {mode === 'search' && search && availableTasks.length > 0 && (
+          <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover shadow-md">
+            <div className="max-h-32 overflow-y-auto p-1">
+              {availableTasks.map((t) => (
+                <button
+                  key={t.uid}
+                  className="w-full rounded-sm px-2 py-1 text-left text-xs hover:bg-accent truncate"
+                  onClick={() => { onAdd({ uid: t.uid, title: t.summary }); setSearch('') }}
+                >
+                  {t.summary}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {mode === 'create' && search.trim() && (
+          <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover shadow-md">
+            <div className="p-1">
+              <button
+                className="w-full rounded-sm px-2 py-1 text-left text-xs hover:bg-accent"
+                onClick={() => { onCreate(search.trim()); setSearch('') }}
+              >
+                <Plus className="inline h-3 w-3 mr-1" />
+                Create "{search.trim()}"
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// TaskEditor
+// ---------------------------------------------------------------------------
 
 export function TaskEditor({ task }: { task: Task }) {
   const calendars = useGraphStore((s) => s.calendars)
   const projects = useGraphStore((s) => s.projects)
   const allTasks = useGraphStore((s) => s.tasks)
+  const updateEntity = useGraphStore((s) => s.updateEntity)
   const selectEntity = useUIStore((s) => s.selectEntity)
+  const { putTask } = useCalDAV()
 
   const form = useEditorForm<TaskFormData>({
     entityType: 'task',
@@ -78,51 +235,131 @@ export function TaskEditor({ task }: { task: Task }) {
     [projects],
   )
 
-  // Available tasks for prerequisite picker (exclude self and already-selected)
-  const availableTasks = useMemo(() => {
-    const selectedUids = new Set(form.formData.prerequisites.map((p) => p.uid))
+  // Subtasks: real tasks whose relatedTo points to this task
+  const subtaskRefs = useMemo((): TaskRef[] => {
     return Array.from(allTasks.values())
-      .filter((t) => t.uid !== task.uid && !selectedUids.has(t.uid))
-      .sort((a, b) => a.summary.localeCompare(b.summary))
-  }, [allTasks, task.uid, form.formData.prerequisites])
+      .filter((t) => t.relatedTo === task.uid)
+      .map((t) => ({ uid: t.uid, title: t.summary }))
+  }, [allTasks, task.uid])
+
+  // Prerequisite UIDs already selected (from form)
+  const prereqUids = useMemo(
+    () => new Set(form.formData.prerequisites.map((p) => p.uid)),
+    [form.formData.prerequisites],
+  )
+
+  // All UIDs to exclude from pickers (self + subtasks + prereqs)
+  const subtaskUids = useMemo(() => new Set(subtaskRefs.map((r) => r.uid)), [subtaskRefs])
+  const excludeFromSubtasks = useMemo(() => {
+    const s = new Set(subtaskUids)
+    s.add(task.uid)
+    prereqUids.forEach((u) => s.add(u))
+    return s
+  }, [subtaskUids, prereqUids, task.uid])
+  const excludeFromPrereqs = useMemo(() => {
+    const s = new Set(prereqUids)
+    s.add(task.uid)
+    subtaskUids.forEach((u) => s.add(u))
+    return s
+  }, [prereqUids, subtaskUids, task.uid])
 
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const [prereqSearch, setPrereqSearch] = useState('')
 
   const handleDelete = useCallback(async () => {
     await form.deleteEntity()
     selectEntity(null)
   }, [form, selectEntity])
 
-  // Sub-task management
-  const addSubtask = useCallback(() => {
-    form.setField('subtasks', [...form.formData.subtasks, { title: '', completed: false }])
+  // --- Subtask handlers ---
+
+  const handleAddSubtask = useCallback((ref: TaskRef) => {
+    // Link an existing task as a subtask by setting its relatedTo to this task
+    const existing = allTasks.get(ref.uid)
+    if (!existing) return
+    const updated: Task = { ...existing, relatedTo: task.uid }
+    putTask(updated, existing.etag).then((result) => {
+      if (result.ok) {
+        updateEntity('task', { ...updated, etag: result.etag, rawIcs: serializeTask(updated) })
+      }
+    })
+  }, [allTasks, task.uid, putTask, updateEntity])
+
+  const handleCreateSubtask = useCallback((title: string) => {
+    const uid = crypto.randomUUID()
+    const now = formatICalDate(new Date())
+    const newTask: Task = {
+      uid,
+      calendarId: task.calendarId,
+      dtstamp: now,
+      summary: title,
+      status: 'NEEDS-ACTION',
+      relatedTo: task.uid,
+      prerequisites: [],
+      etag: '',
+      rawIcs: '',
+    }
+    putTask(newTask).then((result) => {
+      if (result.ok) {
+        updateEntity('task', { ...newTask, etag: result.etag, rawIcs: serializeTask(newTask) })
+      }
+    })
+  }, [task.uid, task.calendarId, putTask, updateEntity])
+
+  const handleRemoveSubtask = useCallback((uid: string) => {
+    // Unlink: set subtask's relatedTo to undefined
+    const sub = allTasks.get(uid)
+    if (!sub) return
+    const updated: Task = { ...sub, relatedTo: undefined }
+    putTask(updated, sub.etag).then((result) => {
+      if (result.ok) {
+        updateEntity('task', { ...updated, etag: result.etag, rawIcs: serializeTask(updated) })
+      }
+    })
+  }, [allTasks, putTask, updateEntity])
+
+  const handleToggleSubtask = useCallback((uid: string) => {
+    const sub = allTasks.get(uid)
+    if (!sub) return
+    const newStatus: TaskStatus = sub.status === 'COMPLETED' ? 'NEEDS-ACTION' : 'COMPLETED'
+    const updated: Task = { ...sub, status: newStatus }
+    putTask(updated, sub.etag).then((result) => {
+      if (result.ok) {
+        updateEntity('task', { ...updated, etag: result.etag, rawIcs: serializeTask(updated) })
+      }
+    })
+  }, [allTasks, putTask, updateEntity])
+
+  // --- Prerequisite handlers ---
+
+  const handleAddPrereq = useCallback((ref: TaskRef) => {
+    form.setField('prerequisites', [...form.formData.prerequisites, ref])
   }, [form])
 
-  const updateSubtask = useCallback((index: number, partial: Partial<SubTask>) => {
-    const next = form.formData.subtasks.map((st, i) =>
-      i === index ? { ...st, ...partial } : st,
-    )
-    form.setField('subtasks', next)
-  }, [form])
+  const handleCreatePrereq = useCallback((title: string) => {
+    // Create a new task and add it as prerequisite
+    const uid = crypto.randomUUID()
+    const now = formatICalDate(new Date())
+    const newTask: Task = {
+      uid,
+      calendarId: task.calendarId,
+      dtstamp: now,
+      summary: title,
+      status: 'NEEDS-ACTION',
+      prerequisites: [],
+      etag: '',
+      rawIcs: '',
+    }
+    putTask(newTask).then((result) => {
+      if (result.ok) {
+        updateEntity('task', { ...newTask, etag: result.etag, rawIcs: serializeTask(newTask) })
+        form.setField('prerequisites', [...form.formData.prerequisites, { uid, title }])
+      }
+    })
+  }, [task.calendarId, putTask, updateEntity, form])
 
-  const removeSubtask = useCallback((index: number) => {
-    form.setField('subtasks', form.formData.subtasks.filter((_, i) => i !== index))
-  }, [form])
-
-  // Prerequisite management
-  const addPrerequisite = useCallback((t: { uid: string; summary: string }) => {
-    form.setField('prerequisites', [...form.formData.prerequisites, { uid: t.uid, title: t.summary }])
-    setPrereqSearch('')
-  }, [form])
-
-  const removePrerequisite = useCallback((uid: string) => {
+  const handleRemovePrereq = useCallback((uid: string) => {
     form.setField('prerequisites', form.formData.prerequisites.filter((p) => p.uid !== uid))
   }, [form])
-
-  const filteredAvailable = prereqSearch
-    ? availableTasks.filter((t) => t.summary.toLowerCase().includes(prereqSearch.toLowerCase()))
-    : []
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -241,77 +478,33 @@ export function TaskEditor({ task }: { task: Task }) {
           </div>
         </div>
 
-        {/* Sub-tasks */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-medium text-muted-foreground">Sub-tasks</label>
-            <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={addSubtask}>
-              <Plus className="mr-1 h-3 w-3" /> Add
-            </Button>
-          </div>
-          {form.formData.subtasks.length > 0 && (
-            <div className="space-y-1">
-              {form.formData.subtasks.map((st, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <Checkbox
-                    checked={st.completed}
-                    onCheckedChange={() => updateSubtask(i, { completed: !st.completed })}
-                    className="h-3.5 w-3.5"
-                  />
-                  <Input
-                    value={st.title}
-                    onChange={(e) => updateSubtask(i, { title: e.target.value })}
-                    className="h-7 flex-1 text-xs"
-                    placeholder="Sub-task title"
-                  />
-                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => removeSubtask(i)}>
-                    <X className="h-3 w-3 text-muted-foreground" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* Sub-tasks — real VTODOs linked via relatedTo */}
+        <TaskPicker
+          label="Sub-tasks"
+          tasks={subtaskRefs}
+          allTasks={allTasks}
+          excludeUids={excludeFromSubtasks}
+          currentTaskUid={task.uid}
+          onAdd={handleAddSubtask}
+          onCreate={handleCreateSubtask}
+          onRemove={handleRemoveSubtask}
+          onToggle={handleToggleSubtask}
+          onNavigate={(uid) => selectEntity(uid)}
+          showStatus
+        />
 
-        {/* Prerequisites */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Prerequisites</label>
-          {form.formData.prerequisites.length > 0 && (
-            <div className="space-y-1">
-              {form.formData.prerequisites.map((p) => (
-                <div key={p.uid} className="flex items-center gap-2 rounded-md bg-secondary px-2 py-1 text-xs">
-                  <span className="flex-1 truncate">{p.title}</span>
-                  <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => removePrerequisite(p.uid)}>
-                    <X className="h-3 w-3 text-muted-foreground" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-          <div className="relative">
-            <Input
-              value={prereqSearch}
-              onChange={(e) => setPrereqSearch(e.target.value)}
-              className="h-7 text-xs"
-              placeholder="Search tasks to add as prerequisite..."
-            />
-            {prereqSearch && filteredAvailable.length > 0 && (
-              <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover shadow-md">
-                <div className="max-h-32 overflow-y-auto p-1">
-                  {filteredAvailable.slice(0, 8).map((t) => (
-                    <button
-                      key={t.uid}
-                      className="w-full rounded-sm px-2 py-1 text-left text-xs hover:bg-accent truncate"
-                      onClick={() => addPrerequisite(t)}
-                    >
-                      {t.summary}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Prerequisites — stored as RELATED-TO;RELTYPE=DEPENDS-ON */}
+        <TaskPicker
+          label="Prerequisites"
+          tasks={form.formData.prerequisites}
+          allTasks={allTasks}
+          excludeUids={excludeFromPrereqs}
+          currentTaskUid={task.uid}
+          onAdd={handleAddPrereq}
+          onCreate={handleCreatePrereq}
+          onRemove={handleRemovePrereq}
+          onNavigate={(uid) => selectEntity(uid)}
+        />
       </div>
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
@@ -321,7 +514,7 @@ export function TaskEditor({ task }: { task: Task }) {
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             Are you sure you want to delete &ldquo;{task.summary}&rdquo;?
-            {task.subtasks.length > 0 && ` It has ${task.subtasks.length} sub-task(s).`}
+            {subtaskRefs.length > 0 && ` It has ${subtaskRefs.length} sub-task(s) that will be unlinked.`}
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>

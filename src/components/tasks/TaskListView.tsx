@@ -8,7 +8,6 @@ interface TaskListViewProps {
   projectNames: Map<string, string>
   selectedTaskId: string | null
   onToggleStatus: (task: Task) => void
-  onToggleSubtask: (task: Task, index: number) => void
   onDelete: (task: Task) => void
   onSelect: (task: Task) => void
 }
@@ -19,7 +18,6 @@ export function TaskListView({
   projectNames,
   selectedTaskId,
   onToggleStatus,
-  onToggleSubtask,
   onDelete,
   onSelect,
 }: TaskListViewProps) {
@@ -43,7 +41,6 @@ export function TaskListView({
           projectNames={projectNames}
           selectedTaskId={selectedTaskId}
           onToggleStatus={onToggleStatus}
-          onToggleSubtask={onToggleSubtask}
           onDelete={onDelete}
           onSelect={onSelect}
         />

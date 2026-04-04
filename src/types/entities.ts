@@ -40,12 +40,8 @@ export interface Event {
 
 export type TaskStatus = 'NEEDS-ACTION' | 'COMPLETED' | 'CANCELLED'
 
-export interface SubTask {
-  title: string
-  completed: boolean
-}
-
-export interface Prerequisite {
+/** Reference to a related task (subtask or prerequisite). */
+export interface TaskRef {
   uid: string
   title: string
 }
@@ -60,10 +56,10 @@ export interface Task {
   /** iCal priority (1-9, lower = higher). Undefined means no priority. */
   priority?: number
   description?: string
-  /** UID of the parent Project, if any */
+  /** UID of the parent entity (Project or parent Task for subtasks) */
   relatedTo?: string
-  subtasks: SubTask[]
-  prerequisites: Prerequisite[]
+  /** UIDs of tasks this task depends on (RELATED-TO;RELTYPE=DEPENDS-ON) */
+  prerequisites: TaskRef[]
   etag: string
   rawIcs: string
 }

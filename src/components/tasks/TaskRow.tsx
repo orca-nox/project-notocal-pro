@@ -3,14 +3,14 @@ import { useState } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { icalToDate, isToday, isSameDay } from '@/lib/caldav/dateUtils'
-import type { Task, SubTask } from '@/types/entities'
+import type { Task } from '@/types/entities'
 
 interface TaskRowProps {
   task: Task
   calendarColor: string
   projectName?: string
+  subtasks: Task[]
   onToggleStatus: (task: Task) => void
-  onToggleSubtask: (task: Task, index: number) => void
   onDelete: (task: Task) => void
   onSelect: (task: Task) => void
   isSelected: boolean
@@ -44,16 +44,21 @@ function DueBadge({ due, status }: { due?: string; status: string }) {
   return <span className={className}>{label}</span>
 }
 
-function SubTaskRow({ subtask, onToggle }: { subtask: SubTask; onToggle: () => void }) {
+function SubTaskRow({ task, onToggle, onSelect }: { task: Task; onToggle: () => void; onSelect: () => void }) {
+  const isCompleted = task.status === 'COMPLETED'
   return (
-    <div className="flex items-center gap-2 py-0.5 pl-10">
+    <div
+      className="flex items-center gap-2 py-0.5 pl-10 cursor-pointer rounded hover:bg-accent/50"
+      onClick={onSelect}
+    >
       <Checkbox
-        checked={subtask.completed}
-        onCheckedChange={onToggle}
+        checked={isCompleted}
+        onCheckedChange={() => onToggle()}
+        onClick={(e) => e.stopPropagation()}
         className="h-3.5 w-3.5"
       />
-      <span className={`text-sm ${subtask.completed ? 'line-through text-muted-foreground' : ''}`}>
-        {subtask.title}
+      <span className={`text-sm ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
+        {task.summary}
       </span>
     </div>
   )
@@ -63,14 +68,14 @@ export function TaskRow({
   task,
   calendarColor,
   projectName,
+  subtasks,
   onToggleStatus,
-  onToggleSubtask,
   onDelete,
   onSelect,
   isSelected,
 }: TaskRowProps) {
   const [expanded, setExpanded] = useState(true)
-  const hasSubtasks = task.subtasks.length > 0
+  const hasSubtasks = subtasks.length > 0
   const isCompleted = task.status === 'COMPLETED'
 
   return (
@@ -130,11 +135,12 @@ export function TaskRow({
 
       {hasSubtasks && expanded && (
         <div className="ml-2">
-          {task.subtasks.map((st, i) => (
+          {subtasks.map((st) => (
             <SubTaskRow
-              key={i}
-              subtask={st}
-              onToggle={() => onToggleSubtask(task, i)}
+              key={st.uid}
+              task={st}
+              onToggle={() => onToggleStatus(st)}
+              onSelect={() => onSelect(st)}
             />
           ))}
         </div>

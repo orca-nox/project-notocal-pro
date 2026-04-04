@@ -194,7 +194,7 @@ A phased build plan, ordered by dependency. Each phase produces a working (if in
 
 #### 1.2 — TypeScript Type Definitions
 
-- [x] Define core entity types in `src/types/entities.ts`: `CalendarInfo`, `Event`, `Task`, `Note`, `Project`, `SubTask`, `Prerequisite`.
+- [x] Define core entity types in `src/types/entities.ts`: `CalendarInfo`, `Event`, `Task`, `Note`, `Project`, `TaskRef`.
 - [x] Define CalDAV response types in `src/types/caldav.ts` (thin wrappers around `tsdav` types).
 - [x] Define store state/action interfaces in `src/types/store.ts`.
 
@@ -204,7 +204,7 @@ A phased build plan, ordered by dependency. Each phase produces a working (if in
 - [x] Implement `lib/caldav/client.ts` — configure the `tsdav` `DAVClient` with Radicale server URL and credentials. Support basic auth via environment variables (or a minimal proxy).
 - [x] Implement `lib/caldav/parser.ts` — parse raw `.ics` strings into typed entities (`Event`, `Task`, `Note`, `Project`). Handle standard properties and custom `X-` properties.
 - [x] Implement `lib/caldav/serializer.ts` — convert typed entities back into valid `.ics` strings.
-- [x] Implement `lib/markdown/subtasks.ts` and `lib/markdown/prerequisites.ts` — parse/serialize structured markdown in `VTODO` descriptions.
+- [x] ~~`lib/markdown/subtasks.ts` and `lib/markdown/prerequisites.ts`~~ — replaced by real VTODO hierarchy (see fix-subtask-hierarchy).
 - [ ] Write unit tests for parsers and serializers (round-trip: parse -> serialize -> parse should be identity).
 
 #### 1.4 — IndexedDB Cache Layer
@@ -394,8 +394,8 @@ Starting with the Calendar view because it's the most visually immediate proof t
 
 - [x] Implement `components/views/TasksView.tsx` — list view with grouped tasks (by project, or "Unassigned").
 - [x] Render each task row: checkbox (toggle status), title, due date badge, priority indicator, project badge, calendar color dot.
-- [x] Parse `DESCRIPTION` for sub-tasks via `lib/markdown/subtasks.ts`. Render sub-tasks as indented children with their own checkboxes.
-- [x] Toggling a checkbox writes the updated `STATUS` (or sub-task state) back to Radicale immediately.
+- [x] Render sub-tasks as indented children with their own checkboxes. Sub-tasks are real VTODOs whose `RELATED-TO` points to the parent task's UID.
+- [x] Toggling a sub-task checkbox writes the updated `STATUS` to Radicale immediately (the sub-task is a full VTODO).
 
 #### 5.2 — Filter Bar
 
@@ -421,10 +421,22 @@ Starting with the Calendar view because it's the most visually immediate proof t
 #### 5.5 — Task Deletion
 
 - [x] Delete action on tasks.
-- [x] If the task has sub-tasks (parsed from `DESCRIPTION`), show a confirmation: *"This task has sub-tasks. Delete them as well?"*
-- [x] If the task is a prerequisite of another task, strip the `[prereq:<UID>]` line from the dependent task's `DESCRIPTION` and update it via CalDAV.
+- [x] If the task has sub-tasks (real VTODOs linked via `RELATED-TO`), show a confirmation and cascade-delete them.
+- [x] If the task is a prerequisite of another task, remove the `RELATED-TO;RELTYPE=DEPENDS-ON` line from the dependent task and update it via CalDAV.
 
 **Phase 5 exit criteria:** Tasks view shows a filterable, sortable hierarchical list. Sub-tasks render inline and toggle independently. Global Kanban alternative works. Tasks can be created, completed, and deleted with proper cascade logic.
+
+---
+
+### Refactor: Subtask Hierarchy (after Phase 6)
+
+Subtasks and prerequisites were originally stored as structured markdown in `VTODO` `DESCRIPTION` fields, making them invisible to other CalDAV clients (DAVx5, Thunderbird, etc.).
+
+- [x] **Refactor: subtasks are now real VTODOs with `RELATED-TO` parent pointers.** A sub-task is a full `VTODO` whose `RELATED-TO` property points to the parent task's UID — identical to how tasks relate to projects. Subtasks are filtered from the top-level task list (`useFilteredTasks`) and rendered inline under their parent.
+- [x] **Refactor: prerequisites stored as `RELATED-TO;RELTYPE=DEPENDS-ON`.** Previously parsed from `## Prerequisites` markdown in `DESCRIPTION`. Now stored as a proper iCal property per RFC 5545, fully interoperable with other CalDAV clients.
+- [x] **Unified TaskPicker UI.** Both subtasks and prerequisites use the same `TaskPicker` component in `TaskEditor.tsx` — toggle between search-existing and create-new modes with Enter-to-confirm.
+- [x] **Cascade delete.** Deleting a task deletes its VTODO subtasks and removes `DEPENDS-ON` references in dependent tasks.
+- [x] **Removed `lib/markdown/subtasks.ts` and `lib/markdown/prerequisites.ts`** — no longer needed.
 
 ---
 
@@ -460,8 +472,8 @@ These issues were discovered during Phase 5 development and testing with real ta
 
 - [x] Implement `components/editors/TaskEditor.tsx`:
   - Fields: Title, Due date, Status (toggle/dropdown), Priority, Calendar, Project.
-  - **Sub-tasks section:** dedicated checkbox list UI with add/remove per sub-task.
-  - **Prerequisites section:** linked task picker with search-to-filter from existing tasks. Serialized to `DESCRIPTION` markdown on save.
+  - **Sub-tasks section:** unified `TaskPicker` — search existing tasks to link, or create new inline. Sub-tasks are real VTODOs with `RELATED-TO` pointing to this task.
+  - **Prerequisites section:** same unified `TaskPicker` — search or create. Stored as `RELATED-TO;RELTYPE=DEPENDS-ON:<uid>` per RFC 5545.
   - Same draft + save behavior as Event Editor.
 
 #### 6.4 — Project Editor

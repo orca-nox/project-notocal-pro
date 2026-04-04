@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
+import { useGraphStore } from '@/store/useGraphStore'
 import { TaskRow } from './TaskRow'
 import type { Task } from '@/types/entities'
 
@@ -11,7 +12,6 @@ interface TaskGroupProps {
   projectNames: Map<string, string>
   selectedTaskId: string | null
   onToggleStatus: (task: Task) => void
-  onToggleSubtask: (task: Task, index: number) => void
   onDelete: (task: Task) => void
   onSelect: (task: Task) => void
 }
@@ -24,11 +24,11 @@ export function TaskGroup({
   projectNames,
   selectedTaskId,
   onToggleStatus,
-  onToggleSubtask,
   onDelete,
   onSelect,
 }: TaskGroupProps) {
   const [collapsed, setCollapsed] = useState(false)
+  const allTasks = useGraphStore((s) => s.tasks)
 
   return (
     <div className="space-y-0.5">
@@ -43,19 +43,23 @@ export function TaskGroup({
         <span className="text-xs font-normal">({count})</span>
       </button>
 
-      {!collapsed && tasks.map((task) => (
-        <TaskRow
-          key={task.uid}
-          task={task}
-          calendarColor={calendarColors.get(task.calendarId) ?? '#3b82f6'}
-          projectName={projectNames.get(task.relatedTo ?? '')}
-          onToggleStatus={onToggleStatus}
-          onToggleSubtask={onToggleSubtask}
-          onDelete={onDelete}
-          onSelect={onSelect}
-          isSelected={selectedTaskId === task.uid}
-        />
-      ))}
+      {!collapsed && tasks.map((task) => {
+        // Resolve subtasks: tasks whose relatedTo points to this task
+        const subtasks = Array.from(allTasks.values()).filter((t) => t.relatedTo === task.uid)
+        return (
+          <TaskRow
+            key={task.uid}
+            task={task}
+            calendarColor={calendarColors.get(task.calendarId) ?? '#3b82f6'}
+            projectName={projectNames.get(task.relatedTo ?? '')}
+            subtasks={subtasks}
+            onToggleStatus={onToggleStatus}
+            onDelete={onDelete}
+            onSelect={onSelect}
+            isSelected={selectedTaskId === task.uid}
+          />
+        )
+      })}
     </div>
   )
 }
