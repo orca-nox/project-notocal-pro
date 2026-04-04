@@ -63,6 +63,7 @@ export function TaskFilterBar({
         options={[
           { value: 'all', label: 'All Status' },
           { value: 'needs-action', label: 'Needs Action' },
+          { value: 'in-process', label: 'In Process' },
           { value: 'completed', label: 'Completed' },
           { value: 'cancelled', label: 'Cancelled' },
         ]}

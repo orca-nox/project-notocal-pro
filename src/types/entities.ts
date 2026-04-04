@@ -38,7 +38,7 @@ export interface Event {
 // Tasks (VTODO)
 // ---------------------------------------------------------------------------
 
-export type TaskStatus = 'NEEDS-ACTION' | 'COMPLETED' | 'CANCELLED'
+export type TaskStatus = 'NEEDS-ACTION' | 'IN-PROCESS' | 'COMPLETED' | 'CANCELLED'
 
 /** Reference to a related task (subtask or prerequisite). */
 export interface TaskRef {

@@ -28,10 +28,10 @@ export function TaskKanbanView({
     const done: Task[] = []
 
     for (const task of tasks) {
-      if (task.status === 'COMPLETED') {
+      if (task.status === 'COMPLETED' || task.status === 'CANCELLED') {
         done.push(task)
-      } else if (task.status === 'CANCELLED') {
-        done.push(task)
+      } else if (task.status === 'IN-PROCESS') {
+        inProgress.push(task)
       } else if (task.due) {
         const due = icalToDate(task.due)
         if (due <= today) {
@@ -49,7 +49,7 @@ export function TaskKanbanView({
 
   return (
     <div className="flex gap-4 h-full overflow-x-auto p-4">
-      <KanbanColumn title="Upcoming" count={upcoming.length}>
+      <KanbanColumn title="Needs Action" count={upcoming.length}>
         {upcoming.map((t) => (
           <TaskCard
             key={t.uid}
@@ -61,7 +61,7 @@ export function TaskKanbanView({
           />
         ))}
       </KanbanColumn>
-      <KanbanColumn title="In Progress" count={inProgress.length}>
+      <KanbanColumn title="In Process" count={inProgress.length}>
         {inProgress.map((t) => (
           <TaskCard
             key={t.uid}
@@ -73,7 +73,7 @@ export function TaskKanbanView({
           />
         ))}
       </KanbanColumn>
-      <KanbanColumn title="Done" count={done.length}>
+      <KanbanColumn title="Completed" count={done.length}>
         {done.map((t) => (
           <TaskCard
             key={t.uid}
