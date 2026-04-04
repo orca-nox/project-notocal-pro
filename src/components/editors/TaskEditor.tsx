@@ -405,6 +405,7 @@ export function TaskEditor({ task }: { task: Task }) {
               className="h-8 w-full rounded-md border border-border bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
             >
               <option value="NEEDS-ACTION">Needs Action</option>
+              <option value="IN-PROCESS">In Process</option>
               <option value="COMPLETED">Completed</option>
               <option value="CANCELLED">Cancelled</option>
             </select>

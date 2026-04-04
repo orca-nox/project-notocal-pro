@@ -72,7 +72,7 @@ export type UIStore = UIState & UIActions
 export type TaskSortField = 'dueDate' | 'priority' | 'project' | 'created'
 
 export interface TaskFilters {
-  status: 'all' | 'needs-action' | 'completed' | 'cancelled'
+  status: 'all' | 'needs-action' | 'in-process' | 'completed' | 'cancelled'
   dueDate: 'all' | 'overdue' | 'today' | 'week' | 'month' | 'none'
   projectId: string | null
   priority: 'all' | 'high' | 'medium' | 'low' | 'none'

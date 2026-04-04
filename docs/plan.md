@@ -512,41 +512,51 @@ These issues were discovered during Phase 5 development and testing with real ta
 
 #### 7.1 — Kanban Components
 
-- [ ] Implement `components/kanban/KanbanBoard.tsx` — a single project's Kanban board. Receives the project and its children from the graph store.
-- [ ] Implement `components/kanban/KanbanColumn.tsx` — one of the four columns (Upcoming, In Progress, Done, Notes). Filters children by status/date logic.
-- [ ] Implement `components/kanban/KanbanCard.tsx` — a draggable card representing an event, task, or note. Shows title, type icon, due date, calendar color.
+- [x] Implement `components/kanban/KanbanBoard.tsx` — a single project's Kanban board. Receives the project and its children from the graph store.
+- [x] Implement `components/kanban/KanbanColumn.tsx` — one of the four columns (Needs Action, In Process, Completed, Notes). Filters children by status/date logic. Supports drag-and-drop target highlighting and inline quick-add with entity type selector.
+- [x] Implement `components/kanban/KanbanCard.tsx` — a draggable card representing an event, task, or note. Shows title, type icon, due date, calendar color.
 
 #### 7.2 — Projects View
 
-- [ ] Implement `components/views/ProjectsView.tsx`:
+- [x] Implement `components/views/ProjectsView.tsx`:
   - Fetch all projects from `useGraphStore`, sorted by `X-PROJECT-PRIORITY`.
   - For each project, render a `KanbanBoard` with its children (from `childrenOf(projectId)`).
   - Apply calendar filters from `useFilterStore` — hide items from disabled calendars.
   - Show a banner per board when items are hidden: *"X items hidden by calendar filters."*
+  - Reactive: subscribes to `tasks`, `events`, `notes` maps so boards update immediately on any entity change.
 
 #### 7.3 — Drag-and-Drop
 
-- [ ] Drag cards between Kanban columns to change status:
-  - Task dragged to "Done" -> set `STATUS:COMPLETED`.
-  - Task dragged to "Upcoming" / "In Progress" -> set `STATUS:NEEDS-ACTION` (the column distinction is date-based, so also prompt for a due date if missing).
-- [ ] Persist status change to Radicale immediately on drop.
+- [x] Drag tasks between Kanban columns to change status (optimistic update, persists to Radicale in background):
+  - Task dragged to "Completed" → `STATUS:COMPLETED`.
+  - Task dragged to "In Process" → `STATUS:IN-PROCESS`.
+  - Task dragged to "Needs Action" → `STATUS:NEEDS-ACTION`.
+- [x] Events are not draggable (their column placement is read-only, derived from `DTSTART`/`DTEND`).
 
 #### 7.4 — Inline Quick-Add
 
-- [ ] Quick-add input at the bottom of each Kanban column.
-- [ ] Creates a new entity of the appropriate type (task in Upcoming/In Progress/Done, note in Notes) linked to the project via `RELATED-TO`.
+- [x] Quick-add input at the bottom of each Kanban column.
+- [x] Needs Action / In Process / Completed columns offer a Task/Event type toggle. Notes column creates notes only.
+- [x] New tasks get a status matching the target column (`NEEDS-ACTION`, `IN-PROCESS`, or `COMPLETED`). No auto due dates.
+- [x] New events get a default 1-hour time slot (9–10 AM) on a date derived from the column.
+- [x] All entities linked to the project via `RELATED-TO`. Optimistic store update before CalDAV write.
 
 #### 7.5 — Project Creation & Deletion
 
-- [ ] Wire the "+ New Project" sidebar button to a creation modal:
+- [x] "+ New Project" button in the Projects view header opens a creation modal:
   - Fields: Name, Primary Context (calendar), optional start/end dates.
-  - Creates a `VJOURNAL` in the `system-projects` collection.
-- [ ] Implement project deletion with the hierarchical prompt:
+  - Creates a `VJOURNAL` in the `system-projects` collection. Optimistic store update.
+- [x] Delete button on each board header. Deletion dialog with hierarchical prompt:
   - *"Delete all items under this project?"*
   - Yes: cascade delete all children.
   - No: sever `RELATED-TO` links, children become unassigned.
 
-**Phase 7 exit criteria:** Projects view shows per-project Kanban boards. Cards can be dragged between columns. Projects can be created and deleted with proper cascade semantics. Cross-calendar filter indicators work.
+**Notes / deviations from plan:**
+- Column names aligned to VTODO RFC 5545 standard: Needs Action, In Process, Completed (instead of Upcoming, In Progress, Done).
+- `IN-PROCESS` added to `TaskStatus` type and propagated across filters, editor, and kanban categorization.
+- `TaskKanbanView` (Tasks view) also updated to use the new column names and `IN-PROCESS` routing.
+
+**Phase 7 exit criteria:** ✅ Projects view shows per-project Kanban boards. Cards can be dragged between columns. Projects can be created and deleted with proper cascade semantics. Cross-calendar filter indicators work.
 
 ---
 

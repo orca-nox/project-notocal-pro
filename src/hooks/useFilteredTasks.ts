@@ -22,6 +22,7 @@ function matchesStatus(task: Task, filter: TaskFilters['status']): boolean {
   if (filter === 'all') return true
   const map: Record<string, string> = {
     'needs-action': 'NEEDS-ACTION',
+    'in-process': 'IN-PROCESS',
     completed: 'COMPLETED',
     cancelled: 'CANCELLED',
   }
