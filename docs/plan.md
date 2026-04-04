@@ -609,21 +609,21 @@ These issues were discovered during Phase 5 development and testing with real ta
 
 #### 9.1 — AI Provider Setup
 
-- [ ] Support multiple LLM providers via environment variables:
+- [x] Support multiple LLM providers via environment variables:
   - **Ollama (local)** — primary provider for development and self-hosted use. Calls the Ollama REST API directly from the frontend (CORS-friendly, no API key required).
   - **Cloud APIs (optional)** — Anthropic Claude, OpenAI, etc. These require a backend proxy to keep API keys server-side.
-- [ ] Environment variables (in `.env`):
+- [x] Environment variables (in `.env`):
   - `VITE_AI_PROVIDER` — `ollama` (default) or `cloud`.
   - `VITE_OLLAMA_BASE_URL` — Ollama API endpoint (e.g., `http://localhost:11434`).
   - `VITE_OLLAMA_MODEL` — model to use (e.g., `gemma3:4b`).
-- [ ] Implement `hooks/useAIChat.ts`:
+- [x] Implement `hooks/useAIChat.ts`:
   - Ollama integration via `/api/chat` endpoint with streaming (`stream: true`).
   - Manages message history, loading state, and abort controller for cancellation.
   - Accepts a system prompt with injected context.
 
 #### 9.2 — AI State Management
 
-- [ ] Implement `store/useAIStore.ts` (Zustand):
+- [x] Implement `store/useAIStore.ts` (Zustand):
   - `isOpen: boolean` — whether the chat panel is expanded.
   - `messages: ChatMessage[]` — conversation history.
   - `isStreaming: boolean` — whether a response is currently streaming.
@@ -632,7 +632,7 @@ These issues were discovered during Phase 5 development and testing with real ta
 
 #### 9.3 — Floating Chat Bubble
 
-- [ ] Implement `components/ai/ChatBubble.tsx`:
+- [x] Implement `components/ai/ChatBubble.tsx`:
   - A circular floating button pinned to the bottom-right corner of the viewport (`fixed` positioning, high `z-index`).
   - Clicking toggles the chat panel open/closed.
   - Visual indicator when the AI is streaming a response (pulse animation).
@@ -640,25 +640,25 @@ These issues were discovered during Phase 5 development and testing with real ta
 
 #### 9.4 — Chat Panel
 
-- [ ] Implement `components/ai/ChatPanel.tsx`:
+- [x] Implement `components/ai/ChatPanel.tsx`:
   - Expands upward from the chat bubble as a floating panel (e.g., 400×500px, resizable).
   - Message history (scrollable, auto-scrolls to bottom on new messages).
   - Input box with send button (Enter to send, Shift+Enter for newline).
   - Streaming response rendering (token-by-token display).
   - Markdown rendering in AI responses.
   - Close button and clear-conversation button in the header.
-- [ ] Wire into `App.tsx` as a top-level overlay (not inside the resizable panel layout).
+- [x] Wire into `App.tsx` as a top-level overlay (not inside the resizable panel layout).
 
 #### 9.5 — Context Injection
 
-- [ ] The AI chat automatically receives context about the user's current state:
+- [x] The AI chat automatically receives context about the user's current state:
   - **Active view:** which view (Projects/Calendar/Tasks/Notes) is currently shown.
   - **Projects view:** list of visible projects with their item counts and statuses.
   - **Calendar view:** events in the currently visible date range.
   - **Tasks view:** tasks matching the current filter set.
   - **Notes view:** the currently open note's content (if any).
-- [ ] When an entity is selected (shown in Column 3), the AI also receives the full details of that entity.
-- [ ] Context is injected as a system message, rebuilt on every chat request.
+- [x] When an entity is selected (shown in Column 3), the AI also receives the full details of that entity.
+- [x] Context is injected as a system message, rebuilt on every chat request.
 
 #### 9.6 — AI Actions (Stretch)
 
