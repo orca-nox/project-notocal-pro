@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useUIStore } from '@/store/useUIStore'
+import { useAIStore } from '@/store/useAIStore'
 import type { ActiveView } from '@/types/store'
 
 const VIEW_KEYS: Record<string, ActiveView> = {
@@ -12,9 +13,18 @@ const VIEW_KEYS: Record<string, ActiveView> = {
 export function useKeyboardShortcuts() {
   const setView = useUIStore((s) => s.setView)
   const selectEntity = useUIStore((s) => s.selectEntity)
+  const toggleAI = useAIStore((s) => s.toggle)
+  const setAIOpen = useAIStore((s) => s.setOpen)
 
   useEffect(() => {
     function handler(e: KeyboardEvent) {
+      // Ctrl+. toggles AI chat (works even in inputs)
+      if ((e.ctrlKey || e.metaKey) && e.key === '.') {
+        e.preventDefault()
+        toggleAI()
+        return
+      }
+
       const tag = (e.target as HTMLElement)?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
       if ((e.target as HTMLElement)?.isContentEditable) return
@@ -26,8 +36,12 @@ export function useKeyboardShortcuts() {
         return
       }
 
-      // Escape: deselect entity
+      // Escape: close AI chat first, then deselect entity
       if (e.key === 'Escape') {
+        if (useAIStore.getState().isOpen) {
+          setAIOpen(false)
+          return
+        }
         selectEntity(null)
         return
       }
@@ -35,5 +49,5 @@ export function useKeyboardShortcuts() {
 
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [setView, selectEntity])
+  }, [setView, selectEntity, toggleAI, setAIOpen])
 }

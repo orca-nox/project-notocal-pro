@@ -14,7 +14,7 @@ Notocal Pro is a self-hosted, desktop-first productivity suite that unifies note
 4. [UI/UX Overview](#4-uiux-overview)
 5. [Architecture Overview](#5-architecture-overview)
 6. [Future Roadmap](#6-future-roadmap)
-7. [Implementation Roadmap](#7-implementation-roadmap) — 11-phase build plan with task checklists
+7. [Implementation Roadmap](#7-implementation-roadmap) — 12-phase build plan with task checklists
 
 > **Detailed specs** are broken out into companion documents:
 >
@@ -100,20 +100,22 @@ The application uses a **three-column desktop layout** with a slide-down top nav
 │  [Top Nav - slide-down, pinnable]                   │
 │  [1] Projects  [2] Calendar  [3] Tasks  [4] Notes   │
 ├──────────┬──────────────────────┬───────────────────┤
-│ Sidebar  │   Main Context Pane  │  AI & Detail Pane │
+│ Sidebar  │   Main Context Pane  │   Detail Pane     │
 │ (Col 1)  │      (Col 2)         │     (Col 3)       │
 │          │                      │                   │
-│ Search   │  Adapts to active    │  Default: AI chat │
-│ Calendar │  view (1-4):         │  Active: Editor + │
-│ Toggles  │  Kanban / Grid /     │    mini-AI chat   │
-│          │  List / Notes        │                   │
-└──────────┴──────────────────────┴───────────────────┘
+│ Search   │  Adapts to active    │  Entity editor    │
+│ Calendar │  view (1-4):         │  when selected    │
+│ Toggles  │  Kanban / Grid /     │                   │
+│          │  List / Notes        │        ┌────────┐ │
+│          │                      │        │ AI 💬  │ │
+└──────────┴──────────────────────┴────────┴────────┘─┘
 ```
 
 - **Number keys (1-4)** switch between the four main views.
 - **Ctrl+K** opens a global search omnibar.
 - **C** quick-creates a new item in context.
-- Column 3 splits vertically (resizable) when editing an item: editor form on top, AI chat on bottom.
+- Column 3 is a pure detail/editor pane — no AI embedded.
+- A **floating AI chat widget** sits in the bottom-right corner (like a messenger). It collapses to a bubble and expands into a chat panel overlay.
 
 > Full layout spec, per-view behavior, keyboard shortcuts, and interaction flows are detailed in [UI/UX Layout Specification](./ui-layout.md).
 
@@ -131,7 +133,7 @@ src/
 │   └── useGraphStore.ts
 ├── components/
 │   ├── ui/         # Dumb components (shadcn/ui, Tailwind-styled)
-│   └── panes/      # Smart panes (Sidebar, MainPane, AIPane)
+│   └── panes/      # Smart panes (Sidebar, MainPane, DetailPane)
 └── ...
 ```
 
@@ -148,10 +150,10 @@ src/
 
 ### AI Privacy Model
 
-The current deployment is single-user on a private home lab, making cloud LLM API usage an acceptable trade-off. For any future public or multi-user release:
+The current deployment is single-user on a private home lab. Ollama is the default provider for fully local, private inference. Cloud LLM APIs (Anthropic, OpenAI) are supported as optional alternatives. For any future public or multi-user release:
 
 - **Opt-in API Key model** — users bring their own API key; no data leaves the app without explicit consent.
-- **Local LLM support** — native integration with [Ollama](https://ollama.ai/) (or similar) for 100% offline, private inference.
+- **Local-first default** — Ollama ships as the default provider, ensuring 100% offline, private inference out of the box.
 
 ### React Native (Android) Port
 
@@ -174,7 +176,7 @@ v1 uses a manual "Duplicate" button instead of `RRULE` recurrence. Full `RRULE` 
 
 ## 7. Implementation Roadmap
 
-A phased build plan, ordered by dependency. Each phase produces a working (if incomplete) application that can be tested end-to-end before moving on. AI integration is intentionally last — every phase before it delivers standalone value.
+A phased build plan, ordered by dependency. Each phase produces a working (if incomplete) application that can be tested end-to-end before moving on. AI integration (Phase 9) comes after core views are complete, followed by search & polish (Phase 10) and Dockerization (Phase 11).
 
 ---
 
@@ -456,8 +458,8 @@ These issues were discovered during Phase 5 development and testing with real ta
 #### 6.1 — Detail Pane Modes
 
 - [x] Implement the mode switch in `DetailPane.tsx`:
-  - **Default (nothing selected):** show a placeholder/empty state (AI chat placeholder — actual AI comes in Phase 10).
-  - **Active (entity selected):** show the editor form. (The vertical split with mini-AI is deferred to Phase 10.)
+  - **Default (nothing selected):** show a placeholder/empty state.
+  - **Active (entity selected):** show the editor form.
   - Resolves entity type by checking which store map contains the UID, routes to the correct editor.
 
 #### 6.2 — Event Editor
@@ -601,11 +603,80 @@ These issues were discovered during Phase 5 development and testing with real ta
 
 ---
 
-### Phase 9: Global Search & Polish
+### Phase 9: AI Integration
 
-**Goal:** The `Ctrl+K` omnibar works across all entity types. Final UX polish pass before AI integration.
+**Goal:** A context-aware AI chat assistant as a floating widget (bottom-right corner, messenger-style) that understands the user's schedule, tasks, and projects. The chat is independent of Column 3 — it floats as an overlay and can be used alongside any view or editor.
 
-#### 9.1 — Global Search Omnibar
+#### 9.1 — AI Provider Setup
+
+- [ ] Support multiple LLM providers via environment variables:
+  - **Ollama (local)** — primary provider for development and self-hosted use. Calls the Ollama REST API directly from the frontend (CORS-friendly, no API key required).
+  - **Cloud APIs (optional)** — Anthropic Claude, OpenAI, etc. These require a backend proxy to keep API keys server-side.
+- [ ] Environment variables (in `.env`):
+  - `VITE_AI_PROVIDER` — `ollama` (default) or `cloud`.
+  - `VITE_OLLAMA_BASE_URL` — Ollama API endpoint (e.g., `http://localhost:11434`).
+  - `VITE_OLLAMA_MODEL` — model to use (e.g., `gemma3:4b`).
+- [ ] Implement `hooks/useAIChat.ts`:
+  - Ollama integration via `/api/chat` endpoint with streaming (`stream: true`).
+  - Manages message history, loading state, and abort controller for cancellation.
+  - Accepts a system prompt with injected context.
+
+#### 9.2 — AI State Management
+
+- [ ] Implement `store/useAIStore.ts` (Zustand):
+  - `isOpen: boolean` — whether the chat panel is expanded.
+  - `messages: ChatMessage[]` — conversation history.
+  - `isStreaming: boolean` — whether a response is currently streaming.
+  - `provider: 'ollama' | 'cloud'` — active provider.
+  - Actions: `toggle()`, `addMessage()`, `clearMessages()`, `setStreaming()`.
+
+#### 9.3 — Floating Chat Bubble
+
+- [ ] Implement `components/ai/ChatBubble.tsx`:
+  - A circular floating button pinned to the bottom-right corner of the viewport (`fixed` positioning, high `z-index`).
+  - Clicking toggles the chat panel open/closed.
+  - Visual indicator when the AI is streaming a response (pulse animation).
+  - Keyboard shortcut: `Ctrl+.` to toggle the chat.
+
+#### 9.4 — Chat Panel
+
+- [ ] Implement `components/ai/ChatPanel.tsx`:
+  - Expands upward from the chat bubble as a floating panel (e.g., 400×500px, resizable).
+  - Message history (scrollable, auto-scrolls to bottom on new messages).
+  - Input box with send button (Enter to send, Shift+Enter for newline).
+  - Streaming response rendering (token-by-token display).
+  - Markdown rendering in AI responses.
+  - Close button and clear-conversation button in the header.
+- [ ] Wire into `App.tsx` as a top-level overlay (not inside the resizable panel layout).
+
+#### 9.5 — Context Injection
+
+- [ ] The AI chat automatically receives context about the user's current state:
+  - **Active view:** which view (Projects/Calendar/Tasks/Notes) is currently shown.
+  - **Projects view:** list of visible projects with their item counts and statuses.
+  - **Calendar view:** events in the currently visible date range.
+  - **Tasks view:** tasks matching the current filter set.
+  - **Notes view:** the currently open note's content (if any).
+- [ ] When an entity is selected (shown in Column 3), the AI also receives the full details of that entity.
+- [ ] Context is injected as a system message, rebuilt on every chat request.
+
+#### 9.6 — AI Actions (Stretch)
+
+- [ ] Allow the AI to propose actions that the user confirms:
+  - *"Create a task: [title]"* → user clicks approve → task is created via CalDAV.
+  - *"Reschedule this event to [date]"* → user clicks approve → event is updated.
+  - *"Summarize this project's status"* → generates a summary from child item statuses.
+- [ ] Actions appear as interactive cards in the chat, not auto-executed.
+
+**Phase 9 exit criteria:** A floating chat widget in the bottom-right corner connects to Ollama, streams responses, and receives context about the current view and selected entity. The chat can be toggled open/closed and does not interfere with the three-column layout.
+
+---
+
+### Phase 10: Global Search & Polish
+
+**Goal:** The `Ctrl+K` omnibar works across all entity types. Final UX polish pass.
+
+#### 10.1 — Global Search Omnibar
 
 - [ ] Implement `components/SearchOverlay.tsx` using shadcn/ui's `Command` component (cmdk):
   - Full-screen overlay triggered by `Ctrl+K` or clicking the sidebar search button.
@@ -615,14 +686,14 @@ These issues were discovered during Phase 5 development and testing with real ta
   - Selecting a result: navigates to the appropriate view and selects the entity (sets `activeView` + `selectedEntityId`).
   - `Escape` or clicking outside closes the overlay.
 
-#### 9.2 — Connection Status Indicator
+#### 10.2 — Connection Status Indicator
 
 - [ ] Wire the Top Nav's connection status indicator to real sync state from `useSync`:
   - **Connected** (green dot): last sync succeeded.
   - **Syncing** (animated): sync in progress.
   - **Error** (red dot + tooltip): last sync failed (network error, auth failure, etc.).
 
-#### 9.3 — Keyboard Navigation Polish
+#### 10.3 — Keyboard Navigation Polish
 
 - [ ] `↑` / `↓` arrow keys navigate between items in lists (task list, note list, search results).
 - [ ] `Enter` opens/selects the highlighted item.
@@ -630,7 +701,7 @@ These issues were discovered during Phase 5 development and testing with real ta
 - [ ] `N` creates a new item contextually (event in Calendar view, task in Tasks view, note in Notes view, project in Projects view).
 - [ ] `Delete` / `Backspace` on a selected item triggers deletion (with confirmation).
 
-#### 9.4 — Empty States
+#### 10.4 — Empty States
 
 - [ ] Design and implement empty states for each view:
   - No projects: *"Create your first project to get started."*
@@ -638,13 +709,13 @@ These issues were discovered during Phase 5 development and testing with real ta
   - No tasks matching filters: *"No tasks match your filters."*
   - No notes: *"Create a note to capture your thoughts."*
 
-#### 9.5 — Loading & Error States
+#### 10.5 — Loading & Error States
 
 - [ ] Skeleton loaders while initial CalDAV fetch is in progress (cache miss on first load).
 - [ ] Toast notifications for successful saves, deletions, and errors.
 - [ ] Graceful offline handling: if Radicale is unreachable, show a persistent banner and operate from cache in read-only mode.
 
-#### 9.6 — Context Menus (Optional)
+#### 10.6 — Context Menus (Optional)
 
 - [ ] If time permits, add right-click context menus via `@radix-ui/react-context-menu`:
   - On events/tasks/notes: Edit, Delete, Duplicate, Move to Project, Move to Calendar.
@@ -652,69 +723,7 @@ These issues were discovered during Phase 5 development and testing with real ta
   - On calendars (sidebar): Toggle, Edit Color/Name.
 - [ ] This is a nice-to-have and can be deferred past v1.
 
-**Phase 9 exit criteria:** Global search finds entities across all types. Keyboard navigation is fluid. Empty/loading/error states are handled. The app feels complete as a standalone productivity tool — before any AI features.
-
----
-
-### Phase 10: AI Integration
-
-**Goal:** A context-aware AI assistant in Column 3 that understands the user's schedule, tasks, and projects.
-
-#### 10.1 — AI Backend Setup
-
-- [ ] Choose an LLM provider for v1 (cloud API — e.g., Anthropic Claude, OpenAI).
-- [ ] Implement a minimal backend proxy (extend the existing auth proxy, or a new Express route) that:
-  - Accepts chat messages from the frontend.
-  - Injects system context (current view data, selected entity, recent items).
-  - Forwards to the LLM API.
-  - Streams responses back to the frontend.
-- [ ] Store the API key server-side (environment variable). Never expose it to the browser.
-
-#### 10.2 — Chat Panel (Default State)
-
-- [ ] Implement `components/ai/ChatPanel.tsx`:
-  - Message history (scrollable).
-  - Input box with send button.
-  - Streaming response rendering (token-by-token display).
-  - Markdown rendering in AI responses.
-- [ ] Wire into `DetailPane.tsx` as the default content when no entity is selected.
-
-#### 10.3 — Context Injection
-
-- [ ] The AI chat automatically receives context about the user's current view:
-  - **Projects view:** list of visible projects with their item counts and statuses.
-  - **Calendar view:** events in the currently visible date range.
-  - **Tasks view:** tasks matching the current filter set.
-  - **Notes view:** the currently open note's content (if any).
-- [ ] When an entity is selected, the AI also receives the full details of that entity.
-- [ ] Context is injected as a system message, updated on every view/selection change.
-
-#### 10.4 — Mini-AI Chat (Active State)
-
-- [ ] Implement `components/ai/MiniChat.tsx` — a compressed chat panel for the bottom of the Column 3 vertical split.
-- [ ] When an entity is selected for editing, Column 3 splits vertically (resizable drag divider):
-  - Top: Editor form (from Phase 6).
-  - Bottom: MiniChat with the selected entity as primary context.
-- [ ] The AI can answer questions about the specific item being edited (e.g., *"What's blocking this task?"*, *"Suggest a better title"*).
-
-#### 10.5 — AI Actions (Stretch)
-
-- [ ] Allow the AI to propose actions that the user confirms:
-  - *"Create a task: [title]"* -> user clicks approve -> task is created via CalDAV.
-  - *"Reschedule this event to [date]"* -> user clicks approve -> event is updated.
-  - *"Summarize this project's status"* -> generates a summary from child item statuses.
-- [ ] Actions appear as interactive cards in the chat, not auto-executed.
-
-#### 10.6 — Local LLM Fallback (Stretch)
-
-- [ ] Add a settings panel for AI configuration:
-  - Provider: Cloud API (default) / Ollama (local).
-  - API key input (for cloud providers).
-  - Ollama endpoint URL (for local).
-  - Model selection.
-- [ ] Implement Ollama integration: same chat interface, different backend endpoint.
-
-**Phase 10 exit criteria:** Column 3 hosts a working AI chat that understands the current view context. The chat compresses into a mini-panel when editing an entity. Optionally, the AI can propose actionable changes that the user confirms.
+**Phase 10 exit criteria:** Global search finds entities across all types. Keyboard navigation is fluid. Empty/loading/error states are handled. The app feels complete as a standalone productivity tool.
 
 ---
 
@@ -781,3 +790,52 @@ The stack has three services:
 - [ ] Confirm Radicale data persists across `docker compose down && docker compose up` (volume survives).
 
 **Phase 11 exit criteria:** `docker compose up --build` produces a fully functional deployment. All credentials come from `.env`. Radicale data persists across restarts. The dev compose override provides HMR for frontend and proxy code. The app is accessible via Tailscale on the home lab.
+
+---
+
+### Phase 12: AI-Powered CRUD Actions
+
+**Goal:** The AI chat widget can create, read, update, and delete events, tasks, notes, and projects on the user's behalf via natural language — with explicit user confirmation before any mutation.
+
+#### 12.1 — Action Framework
+
+- [ ] Define a structured action schema for AI-proposed mutations:
+  - `create-event`, `create-task`, `create-note`, `create-project`
+  - `update-event`, `update-task`, `update-note`, `update-project`
+  - `delete-event`, `delete-task`, `delete-note`, `delete-project`
+- [ ] Each action includes: type, target entity (UID for updates/deletes), and a payload of field values.
+- [ ] Implement action parsing: the AI returns structured JSON action blocks alongside its natural-language response.
+
+#### 12.2 — Confirmation Cards
+
+- [ ] Render AI-proposed actions as interactive confirmation cards in the chat:
+  - Card shows a human-readable summary of the proposed change (e.g., *"Create task: Buy groceries, due 2026-04-10"*).
+  - `[Approve]` and `[Dismiss]` buttons on each card.
+  - Approved actions are executed via `useCalDAV` hooks (same path as manual edits).
+  - Dismissed actions are visually struck through.
+- [ ] Multiple actions can be proposed in a single response (e.g., *"Create 3 tasks for the project"*).
+
+#### 12.3 — Read Queries
+
+- [ ] The AI can answer questions about existing data using the injected context:
+  - *"What's on my calendar this week?"*
+  - *"Show me overdue tasks."*
+  - *"Summarize the Website Redesign project."*
+- [ ] For queries that exceed the context window, implement on-demand data fetching: the AI requests additional data via a tool-call pattern, and the frontend supplies it.
+
+#### 12.4 — Smart Defaults & Validation
+
+- [ ] When creating entities, the AI infers sensible defaults from context:
+  - Calendar assignment based on the active view or mentioned project.
+  - Due dates parsed from natural language (*"next Friday"*, *"in 3 days"*).
+  - Project linking when the user mentions a project by name.
+- [ ] Validate proposed actions before showing confirmation cards (e.g., reject invalid dates, missing required fields).
+
+#### 12.5 — Undo Support
+
+- [ ] After an approved action is executed, show an `[Undo]` button in the chat (available for ~10 seconds).
+- [ ] Undo for creates: delete the created entity.
+- [ ] Undo for updates: revert to the previous field values (snapshot before mutation).
+- [ ] Undo for deletes: re-create the entity from its cached data.
+
+**Phase 12 exit criteria:** The AI can propose create/update/delete actions for all entity types. Actions appear as confirmation cards. Approved actions execute through the standard CalDAV pipeline. Users can undo recent actions. No mutation happens without explicit user approval.

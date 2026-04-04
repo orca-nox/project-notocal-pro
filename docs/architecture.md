@@ -85,7 +85,7 @@ src/
 │   │
 │   ├── kanban/               # Kanban board components (Phase 5 tasks, planned Phase 7 projects)
 │   │
-│   └── ai/                   # AI chat components (planned Phase 10)
+│   └── ai/                   # Floating AI chat widget (Phase 9)
 │
 ├── types/                    # TypeScript type definitions
 │   ├── entities.ts            # Event, Task, Note, Project types

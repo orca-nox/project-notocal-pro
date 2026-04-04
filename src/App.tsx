@@ -7,6 +7,7 @@ import { Sidebar } from '@/components/panes/Sidebar'
 import { TopNav } from '@/components/panes/TopNav'
 import { MainPane } from '@/components/panes/MainPane'
 import { DetailPane } from '@/components/panes/DetailPane'
+import { ChatBubble } from '@/components/ai/ChatBubble'
 
 function App() {
   const { error: bootstrapError } = useBootstrap()
@@ -43,6 +44,9 @@ function App() {
           </Panel>
         </Group>
       </div>
+
+      {/* Floating AI chat widget */}
+      <ChatBubble />
     </div>
   )
 }

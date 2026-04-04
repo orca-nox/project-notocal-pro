@@ -361,7 +361,7 @@ Notocal Pro uses **ETag-based optimistic concurrency** (standard CalDAV behavior
 1. When fetching an entity, the client stores its `ETag`.
 2. On save, the client sends the `ETag` in an `If-Match` header.
 3. If the server's `ETag` has changed (another client modified the entity), the `PUT` request fails with `412 Precondition Failed`.
-4. Notocal Pro surfaces a **conflict prompt** in Column 3 (the AI & Detail Pane): *"This item was modified externally. Overwrite with your changes?"*
+4. Notocal Pro surfaces a **conflict prompt** in Column 3 (the Detail Pane): *"This item was modified externally. Overwrite with your changes?"*
 5. The user can choose to overwrite (force `PUT`) or reload the server version.
 
 This is a **Last-Write-Wins** model with user confirmation — simple, transparent, and appropriate for a single-user deployment.
