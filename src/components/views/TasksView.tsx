@@ -58,22 +58,17 @@ export function TasksView() {
     ).length
   }, [deleteTarget, tasks])
 
+  // Count subtasks of the delete target
+  const subtaskCount = useMemo(() => {
+    if (!deleteTarget) return 0
+    return Array.from(tasks.values()).filter((t) => t.relatedTo === deleteTarget.uid).length
+  }, [deleteTarget, tasks])
+
   // --- Handlers ---
 
   const handleToggleStatus = useCallback(async (task: Task) => {
     const newStatus: TaskStatus = task.status === 'COMPLETED' ? 'NEEDS-ACTION' : 'COMPLETED'
     const updated: Task = { ...task, status: newStatus }
-    const result = await putTask(updated, task.etag)
-    if (result.ok) {
-      updateEntity('task', { ...updated, etag: result.etag, rawIcs: serializeTask(updated) })
-    }
-  }, [putTask, updateEntity])
-
-  const handleToggleSubtask = useCallback(async (task: Task, subtaskIndex: number) => {
-    const newSubtasks = task.subtasks.map((st, i) =>
-      i === subtaskIndex ? { ...st, completed: !st.completed } : st,
-    )
-    const updated: Task = { ...task, subtasks: newSubtasks }
     const result = await putTask(updated, task.etag)
     if (result.ok) {
       updateEntity('task', { ...updated, etag: result.etag, rawIcs: serializeTask(updated) })
@@ -89,7 +84,6 @@ export function TasksView() {
       dtstamp: now,
       summary: title,
       status: 'NEEDS-ACTION',
-      subtasks: [],
       prerequisites: [],
       etag: '',
       rawIcs: '',
@@ -101,8 +95,16 @@ export function TasksView() {
   }, [putTask, updateEntity])
 
   const handleDeleteConfirm = useCallback(async (task: Task) => {
-    // 1. Clean up prerequisites in dependent tasks
     const allTasks = Array.from(tasks.values())
+
+    // 1. Delete subtasks (tasks whose relatedTo points to this task)
+    const subtasks = allTasks.filter((t) => t.relatedTo === task.uid)
+    for (const sub of subtasks) {
+      await deleteTask(sub)
+      removeEntity('task', sub.uid)
+    }
+
+    // 2. Clean up prerequisites in dependent tasks
     const dependents = allTasks.filter((t) =>
       t.prerequisites.some((p) => p.uid === task.uid),
     )
@@ -117,11 +119,11 @@ export function TasksView() {
       }
     }
 
-    // 2. Delete the task
+    // 3. Delete the task itself
     await deleteTask(task)
     removeEntity('task', task.uid)
 
-    // 3. Close dialog and deselect if needed
+    // 4. Close dialog and deselect if needed
     setDeleteTarget(null)
     if (selectedEntityId === task.uid) selectEntity(null)
   }, [tasks, putTask, deleteTask, updateEntity, removeEntity, selectedEntityId, selectEntity])
@@ -184,7 +186,6 @@ export function TasksView() {
               projectNames={projectNames}
               selectedTaskId={selectedEntityId}
               onToggleStatus={handleToggleStatus}
-              onToggleSubtask={handleToggleSubtask}
               onDelete={setDeleteTarget}
               onSelect={(t) => selectEntity(t.uid)}
             />
@@ -207,6 +208,7 @@ export function TasksView() {
         onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
         onConfirm={handleDeleteConfirm}
         dependentCount={dependentCount}
+        subtaskCount={subtaskCount}
       />
     </div>
   )

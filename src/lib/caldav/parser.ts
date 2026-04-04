@@ -1,6 +1,4 @@
-import type { Event, Task, Note, Project, TaskStatus, ProjectStatus } from '@/types/entities'
-import { parseSubtasks } from '@/lib/markdown/subtasks'
-import { parsePrerequisites } from '@/lib/markdown/prerequisites'
+import type { Event, Task, Note, Project, TaskStatus, ProjectStatus, TaskRef } from '@/types/entities'
 
 // ---------------------------------------------------------------------------
 // Low-level .ics property extraction
@@ -14,6 +12,28 @@ function prop(ics: string, name: string): string | undefined {
   const re = new RegExp(`^${name}(?:;[^:]*)?:(.*)$`, 'm')
   const match = unfolded.match(re)
   return match?.[1]?.trim()
+}
+
+interface RelatedToEntry {
+  uid: string
+  reltype: string // 'PARENT' (default), 'DEPENDS-ON', etc.
+}
+
+/** Extract all RELATED-TO properties with their RELTYPE parameter. */
+function propAllRelatedTo(ics: string): RelatedToEntry[] {
+  const unfolded = ics.replace(/\r?\n[ \t]/g, '')
+  const results: RelatedToEntry[] = []
+  const re = /^RELATED-TO(?:;([^:]*))?\s*:(.*)$/gm
+  let match
+  while ((match = re.exec(unfolded)) !== null) {
+    const params = match[1] ?? ''
+    const uid = match[2].trim()
+    // Extract RELTYPE from parameters (e.g. "RELTYPE=DEPENDS-ON")
+    const reltypeMatch = params.match(/RELTYPE=([^;]+)/i)
+    const reltype = reltypeMatch ? reltypeMatch[1].toUpperCase() : 'PARENT'
+    results.push({ uid, reltype })
+  }
+  return results
 }
 
 /** Unescape iCalendar text values */
@@ -157,6 +177,13 @@ export function parseTask(ics: string, calendarId: string, etag: string): Task |
   const description = rawDescription ? unescapeIcs(rawDescription) : undefined
   const priorityStr = prop(block, 'PRIORITY')
 
+  // Parse RELATED-TO properties with RELTYPE discrimination
+  const allRelated = propAllRelatedTo(block)
+  const parentRel = allRelated.find((r) => r.reltype === 'PARENT')
+  const dependsOn: TaskRef[] = allRelated
+    .filter((r) => r.reltype === 'DEPENDS-ON')
+    .map((r) => ({ uid: r.uid, title: '' })) // titles resolved post-parse
+
   return {
     uid,
     calendarId,
@@ -166,9 +193,8 @@ export function parseTask(ics: string, calendarId: string, etag: string): Task |
     status,
     priority: priorityStr ? parseInt(priorityStr, 10) : undefined,
     description,
-    relatedTo: prop(block, 'RELATED-TO'),
-    subtasks: description ? parseSubtasks(description) : [],
-    prerequisites: description ? parsePrerequisites(description) : [],
+    relatedTo: parentRel?.uid,
+    prerequisites: dependsOn,
     etag,
     rawIcs: ics,
   }

@@ -1,6 +1,4 @@
 import type { Event, Task, Note, Project } from '@/types/entities'
-import { serializeSubtasks } from '@/lib/markdown/subtasks'
-import { serializePrerequisites } from '@/lib/markdown/prerequisites'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -56,24 +54,10 @@ export function serializeEvent(event: Event): string {
 }
 
 export function serializeTask(task: Task): string {
-  // Build the structured DESCRIPTION from subtasks, prerequisites, and freeform notes
-  const parts: string[] = []
-
-  if (task.subtasks.length > 0) {
-    parts.push(serializeSubtasks(task.subtasks))
-  }
-  if (task.prerequisites.length > 0) {
-    parts.push(serializePrerequisites(task.prerequisites))
-  }
-  // Preserve any freeform description text that isn't part of subtasks/prerequisites
-  if (task.description) {
-    const freeform = extractFreeformDescription(task.description)
-    if (freeform) {
-      parts.push(`## Notes\n${freeform}`)
-    }
-  }
-
-  const fullDescription = parts.length > 0 ? parts.join('\n\n') : undefined
+  // Build prerequisite RELATED-TO lines with RELTYPE=DEPENDS-ON
+  const prereqLines = task.prerequisites
+    .map((p) => `RELATED-TO;RELTYPE=DEPENDS-ON:${p.uid}\r\n`)
+    .join('')
 
   return (
     `BEGIN:VCALENDAR\r\n` +
@@ -86,8 +70,9 @@ export function serializeTask(task: Task): string {
     optLine('DUE', task.due) +
     `STATUS:${task.status}\r\n` +
     (task.priority !== undefined ? `PRIORITY:${task.priority}\r\n` : '') +
-    optTextLine('DESCRIPTION', fullDescription) +
+    optTextLine('DESCRIPTION', task.description) +
     optLine('RELATED-TO', task.relatedTo) +
+    prereqLines +
     `END:VTODO\r\n` +
     `END:VCALENDAR\r\n`
   )
@@ -129,33 +114,3 @@ export function serializeProject(project: Project): string {
   )
 }
 
-// ---------------------------------------------------------------------------
-// Description helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Extract freeform text from a task description, stripping out
- * the structured ## Sub-tasks, ## Prerequisites, and ## Notes headers.
- */
-function extractFreeformDescription(description: string): string | undefined {
-  const lines = description.split('\n')
-  const freeformLines: string[] = []
-  let inStructuredSection = false
-
-  for (const line of lines) {
-    if (/^## (Sub-tasks|Prerequisites|Notes)$/i.test(line)) {
-      inStructuredSection = line.toLowerCase().includes('notes')
-      continue
-    }
-    if (/^## /.test(line)) {
-      inStructuredSection = false
-      continue
-    }
-    if (inStructuredSection) {
-      freeformLines.push(line)
-    }
-  }
-
-  const result = freeformLines.join('\n').trim()
-  return result || undefined
-}

@@ -39,9 +39,6 @@ src/
 │   │   ├── parser.ts         # .ics parsing with VTIMEZONE isolation & DURATION support
 │   │   ├── serializer.ts     # Entity -> .ics string conversion
 │   │   └── dateUtils.ts      # Date math helpers (addDays, startOfWeek, formatICalDate, etc.)
-│   ├── markdown/             # Markdown parsing for task descriptions
-│   │   ├── subtasks.ts       # Parse/serialize sub-task checklists
-│   │   └── prerequisites.ts  # Parse/serialize prerequisite links
 │   ├── cache.ts              # IndexedDB layer via idb (replaceAllCached, per-entity CRUD)
 │   ├── graph.ts              # RELATED-TO graph construction logic
 │   └── utils.ts              # General utilities (cn, etc.)
@@ -210,16 +207,8 @@ Converts typed TypeScript objects back into valid `.ics` strings for `PUT` reque
 
 - All required properties are present
 - Custom properties are correctly formatted
-- DESCRIPTION markdown structure is preserved
-
-#### `lib/markdown/subtasks.ts` & `prerequisites.ts`
-
-Parse and serialize the structured markdown within `VTODO` `DESCRIPTION` fields:
-
-- `parseSubtasks(description: string) -> SubTask[]`
-- `serializeSubtasks(subtasks: SubTask[]) -> string`
-- `parsePrerequisites(description: string) -> Prerequisite[]`
-- `serializePrerequisites(prereqs: Prerequisite[]) -> string`
+- Subtask relationships serialized as `RELATED-TO` (parent pointer on child VTODO)
+- Prerequisites serialized as `RELATED-TO;RELTYPE=DEPENDS-ON:<uid>` per RFC 5545
 
 ---
 

@@ -1,4 +1,5 @@
 import { Checkbox } from '@/components/ui/checkbox'
+import { useGraphStore } from '@/store/useGraphStore'
 import { icalToDate, isToday } from '@/lib/caldav/dateUtils'
 import type { Task } from '@/types/entities'
 
@@ -11,7 +12,12 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, calendarColor, onToggleStatus, onSelect, isSelected }: TaskCardProps) {
+  const allTasks = useGraphStore((s) => s.tasks)
   const isCompleted = task.status === 'COMPLETED'
+
+  // Resolve subtasks from graph
+  const subtasks = Array.from(allTasks.values()).filter((t) => t.relatedTo === task.uid)
+  const completedSubtasks = subtasks.filter((t) => t.status === 'COMPLETED')
 
   let dueBadge = null
   if (task.due) {
@@ -52,9 +58,9 @@ export function TaskCard({ task, calendarColor, onToggleStatus, onSelect, isSele
               <span className="text-xs text-red-500">High</span>
             )}
             {dueBadge}
-            {task.subtasks.length > 0 && (
+            {subtasks.length > 0 && (
               <span className="text-xs text-muted-foreground">
-                {task.subtasks.filter((s) => s.completed).length}/{task.subtasks.length}
+                {completedSubtasks.length}/{subtasks.length}
               </span>
             )}
           </div>

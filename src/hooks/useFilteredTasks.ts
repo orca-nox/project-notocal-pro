@@ -101,9 +101,16 @@ export function useFilteredTasks(): FilteredTasksResult {
 
   return useMemo(() => {
     const allTasks = Array.from(tasks.values())
-    const totalCount = allTasks.length
 
-    const filtered = allTasks.filter((t) =>
+    // Exclude subtasks (tasks whose relatedTo points to another task, not a project)
+    const topLevelTasks = allTasks.filter((t) => {
+      if (!t.relatedTo) return true
+      // If relatedTo points to another task, it's a subtask — hide from top level
+      return !tasks.has(t.relatedTo)
+    })
+    const totalCount = topLevelTasks.length
+
+    const filtered = topLevelTasks.filter((t) =>
       enabledCalendars.has(t.calendarId) &&
       matchesStatus(t, taskFilters.status) &&
       matchesDueDate(t, taskFilters.dueDate) &&
