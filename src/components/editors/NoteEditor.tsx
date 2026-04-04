@@ -6,14 +6,12 @@ import { useUIStore } from '@/store/useUIStore'
 import { ConflictBanner } from './ConflictBanner'
 import { DraftBanner } from './DraftBanner'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import type { Entity, Note } from '@/types/entities'
 
 interface NoteFormData extends Record<string, unknown> {
   summary: string
-  description: string
   calendarId: string
   relatedTo: string
 }
@@ -22,7 +20,6 @@ function toFormData(entity: Entity): NoteFormData {
   const n = entity as Note
   return {
     summary: n.summary,
-    description: n.description ?? '',
     calendarId: n.calendarId,
     relatedTo: n.relatedTo ?? '',
   }
@@ -33,7 +30,6 @@ function toEntity(formData: NoteFormData, original: Entity): Note {
   return {
     ...n,
     summary: formData.summary,
-    description: formData.description || undefined,
     calendarId: formData.calendarId,
     relatedTo: formData.relatedTo || undefined,
   }
@@ -69,7 +65,7 @@ export function NoteEditor({ note }: { note: Note }) {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-border px-4 py-2">
-        <h2 className="text-sm font-semibold text-muted-foreground">Edit Note</h2>
+        <h2 className="text-sm font-semibold text-muted-foreground">Note Details</h2>
         <div className="flex items-center gap-1">
           <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => setDeleteOpen(true)}>
             <Trash2 className="h-3.5 w-3.5" />
@@ -98,16 +94,6 @@ export function NoteEditor({ note }: { note: Note }) {
             value={form.formData.summary}
             onChange={(e) => form.setField('summary', e.target.value)}
             className="h-8 text-sm"
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Content</label>
-          <Textarea
-            value={form.formData.description}
-            onChange={(e) => form.setField('description', e.target.value)}
-            className="min-h-[200px] text-sm font-mono"
-            placeholder="Write your note..."
           />
         </div>
 

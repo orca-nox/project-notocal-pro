@@ -46,8 +46,6 @@ export function useEditorForm<T extends Record<string, unknown>>(
   })
   const updateEntity = useGraphStore((s) => s.updateEntity)
   const removeEntity = useGraphStore((s) => s.removeEntity)
-  const selectEntity = useGraphStore.getState // we'll import from UIStore below
-
   const { putEvent, putTask, putNote, putProject, deleteEvent, deleteTask, deleteNote, deleteProject, fetchAll } = useCalDAV()
   const replaceEntities = useGraphStore((s) => s.replaceEntities)
 
@@ -86,7 +84,7 @@ export function useEditorForm<T extends Record<string, unknown>>(
   }, [entity, toFormData, hasDraft])
 
   // Debounced draft save
-  const draftTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const scheduleDraftSave = useCallback((data: T) => {
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current)
@@ -152,7 +150,7 @@ export function useEditorForm<T extends Record<string, unknown>>(
 
       if (result.ok) {
         const saved = { ...updated, etag: result.etag, rawIcs: serializeEntity(updated) }
-        updateEntity(entityType, saved as Event & Task & Note & Project)
+        updateEntity(entityType as never, saved as never)
         etagRef.current = result.etag
         clearDraft(uid)
         setHasDraft(false)
@@ -208,7 +206,7 @@ export function useEditorForm<T extends Record<string, unknown>>(
 
       if (writeResult.ok) {
         const saved = { ...updated, etag: writeResult.etag, rawIcs: serializeEntity(updated) }
-        updateEntity(entityType, saved as Event & Task & Note & Project)
+        updateEntity(entityType as never, saved as never)
         etagRef.current = writeResult.etag
         clearDraft(uid)
         setHasDraft(false)
