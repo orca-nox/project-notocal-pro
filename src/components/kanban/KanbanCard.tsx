@@ -1,7 +1,7 @@
 import { Calendar, CheckSquare, StickyNote } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { icalToDate, isToday } from '@/lib/caldav/dateUtils'
-import type { Entity, Event, Task, Note } from '@/types/entities'
+import type { Entity, Event, Task } from '@/types/entities'
 
 export type KanbanColumnId = 'upcoming' | 'in-progress' | 'done' | 'notes'
 

@@ -566,36 +566,36 @@ These issues were discovered during Phase 5 development and testing with real ta
 
 #### 8.1 — Notes Navigation
 
-- [ ] Implement `components/views/NotesView.tsx`:
+- [x] Implement `components/views/NotesView.tsx`:
   - Left sub-panel: folder list (All Notes, Unassigned, one folder per project).
   - Middle sub-panel: note list for the selected folder (title, date, preview snippet).
   - Right sub-panel (or full-width toggle): markdown editor for the selected note.
-- [ ] Folder counts: show note count per folder.
+- [x] Folder counts: show note count per folder.
 
 #### 8.2 — Markdown Editor
 
-- [ ] Integrate a markdown editor component (e.g., `@uiw/react-md-editor`, or a custom textarea with live preview using `react-markdown` + `@tailwindcss/typography`).
-- [ ] Formatting toolbar: bold, italic, headings, bullet/numbered lists, code blocks, horizontal rule.
-- [ ] Auto-save drafts to `useDraftStore` on every keystroke (debounced, ~500ms).
-- [ ] Explicit save to Radicale on `Ctrl+S` or save button.
+- [x] Integrate a markdown editor component (e.g., `@uiw/react-md-editor`, or a custom textarea with live preview using `react-markdown` + `@tailwindcss/typography`).
+- [x] Formatting toolbar: bold, italic, headings, bullet/numbered lists, code blocks, horizontal rule.
+- [x] Auto-save drafts to `useDraftStore` on every keystroke (debounced, ~500ms).
+- [x] Explicit save to Radicale on `Ctrl+S` or save button.
 
 #### 8.3 — Editor Modes
 
-- [ ] **Split mode** (default): folder list + note list + editor all visible in Column 2.
-- [ ] **Full mode**: editor expands to fill all of Column 2. Toggle via a button or keyboard shortcut. Persisted in `useUIStore.notesEditorMode`.
+- [x] **Split mode** (default): folder list + note list + editor all visible in Column 2.
+- [x] **Full mode**: editor expands to fill all of Column 2. Toggle via a button or keyboard shortcut. Persisted in `useUIStore.notesEditorMode`.
 
 #### 8.4 — Note Editor in Column 3
 
-- [ ] Implement `components/editors/NoteEditor.tsx` for the Column 3 detail pane:
+- [x] Implement `components/editors/NoteEditor.tsx` for the Column 3 detail pane:
   - Fields: Title (SUMMARY), Project (RELATED-TO dropdown), Calendar assignment.
   - This is the metadata editor. The actual content editing happens in Column 2's markdown editor.
-- [ ] Selecting a note in the Notes view simultaneously opens its metadata in Column 3 and its content in Column 2.
+- [x] Selecting a note in the Notes view simultaneously opens its metadata in Column 3 and its content in Column 2.
 
 #### 8.5 — Note CRUD
 
-- [ ] Create note: from the Notes view (+ button), or from a Project Kanban's Notes column (Phase 7 quick-add).
-- [ ] Delete note: straightforward CalDAV `DELETE`.
-- [ ] Notes created from the Project Kanban automatically have `RELATED-TO` set and appear in the corresponding project folder.
+- [x] Create note: from the Notes view (+ button), or from a Project Kanban's Notes column (Phase 7 quick-add).
+- [x] Delete note: straightforward CalDAV `DELETE`.
+- [x] Notes created from the Project Kanban automatically have `RELATED-TO` set and appear in the corresponding project folder.
 
 **Phase 8 exit criteria:** Notes view provides folder navigation by project, a searchable note list, and a markdown editor with auto-draft persistence. Notes can be created, edited, and deleted. Split and full editor modes work.
 
