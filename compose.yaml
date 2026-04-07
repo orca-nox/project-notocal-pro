@@ -1,0 +1,38 @@
+services:
+  proxy:
+    build: ./proxy
+    env_file: .env
+    networks: [notocal-net, radicale]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    container_name: notocal-frontend
+    build:
+      context: .
+      args:
+        VITE_CALDAV_USERNAME: ${VITE_CALDAV_USERNAME}
+    ports: ["127.0.0.1:8080:80"]
+    environment:
+      - CALDAV_USERNAME=${VITE_CALDAV_USERNAME}
+    depends_on:
+      proxy:
+        condition: service_healthy
+    networks: [notocal-net]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  notocal-net:
+    driver: bridge
+  radicale:
+    external: true
+    name: radicale_radicale

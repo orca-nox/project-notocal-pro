@@ -1,0 +1,50 @@
+server {
+    listen 80;
+    server_name _;
+
+    # Static assets with long cache (Vite hashed filenames)
+    location /assets/ {
+        root /usr/share/nginx/html;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Proxy API routes to Express backend
+    location /api/ {
+        proxy_pass http://proxy:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection '';
+        proxy_buffering off;
+        proxy_cache off;
+    }
+
+    # CalDAV paths — username-based, matching Radicale's href structure
+    location /${CALDAV_USERNAME}/ {
+        proxy_pass http://proxy:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /.well-known/caldav {
+        proxy_pass http://proxy:3001;
+    }
+
+    # Health check passthrough
+    location = /health {
+        proxy_pass http://proxy:3001;
+    }
+
+    # SPA fallback — serve index.html for all other routes
+    location / {
+        root /usr/share/nginx/html;
+        try_files $uri $uri/ /index.html;
+        add_header Cache-Control "no-cache";
+    }
+}

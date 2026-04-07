@@ -1,0 +1,29 @@
+services:
+  proxy:
+    build: !reset null
+    image: node:lts-alpine
+    working_dir: /app
+    volumes:
+      - ./proxy:/app
+      - proxy_node_modules:/app/node_modules
+    command: npx tsx watch src/index.ts
+    ports: ["3001:3001"]
+
+  frontend:
+    build: !reset null
+    image: node:lts-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+      - frontend_node_modules:/app/node_modules
+    command: npx vite --host 0.0.0.0
+    ports: ["5173:5173"]
+    environment:
+      - PROXY_URL=http://proxy:3001
+    depends_on:
+      proxy:
+        condition: service_healthy
+
+volumes:
+  proxy_node_modules:
+  frontend_node_modules:

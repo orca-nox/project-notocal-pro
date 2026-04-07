@@ -5,7 +5,6 @@ let client: DAVClient | null = null
 export interface CalDAVConfig {
   serverUrl: string
   username: string
-  password: string
 }
 
 /**
@@ -21,29 +20,29 @@ export interface CalDAVConfig {
 export async function getClient(config: CalDAVConfig): Promise<DAVClient> {
   if (client) return client
 
-  const { serverUrl, username, password } = config
+  const { serverUrl, username } = config
   const base = serverUrl.replace(/\/$/, '')
   const homeUrl = `${base}/${username}/`
 
   client = new DAVClient({
     serverUrl: base,
-    credentials: { username, password },
+    credentials: { username, password: '' },
     authMethod: 'Basic',
     defaultAccountType: 'caldav',
   })
 
-  // Set auth headers and account directly, bypassing login() / service discovery.
-  const basicAuth = `Basic ${btoa(`${username}:${password}`)}`
+  // Set account directly, bypassing login() / service discovery.
+  // Auth is handled by the backend proxy — no credentials needed client-side.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const c = client as any
-  c.authHeaders = { Authorization: basicAuth }
+  c.authHeaders = {}
   c.account = {
     serverUrl: base,
     rootUrl: `${base}/`,
     principalUrl: homeUrl,
     homeUrl,
     accountType: 'caldav',
-    credentials: { username, password },
+    credentials: { username, password: '' },
   }
 
   return client
