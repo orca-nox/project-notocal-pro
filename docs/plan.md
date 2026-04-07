@@ -729,67 +729,70 @@ These issues were discovered during Phase 5 development and testing with real ta
 
 ### Phase 11: Dockerization & Deployment
 
-**Goal:** Package the entire stack (frontend, backend proxy, Radicale) into a single `docker compose up` deployment. The app should be reproducibly deployable to the home lab with persistent data and zero manual setup.
+**Goal:** Package the frontend and backend proxy into a `docker compose up` deployment. Radicale remains an independent service (managed separately at `/opt/radicale/`). The app should be reproducibly deployable to the home lab with zero manual setup beyond `.env` configuration.
 
-The stack has three services:
-- **`radicale`** — CalDAV/CardDAV server; data lives in a named volume.
-- **`proxy`** — Node/Express backend: handles auth, proxies CalDAV requests to Radicale, and serves the AI chat endpoint.
-- **`frontend`** — Nginx serving the Vite production build.
+The stack has two services (Radicale is external):
+- **`proxy`** — Node/Express backend: proxies CalDAV requests to Radicale (injecting auth), proxies AI chat to Ollama, exposes `/health`.
+- **`frontend`** — Nginx serving the Vite production build; reverse-proxies `/<username>/*`, `/api/*`, and `/.well-known/caldav` to the proxy service.
 
-#### 11.1 — Radicale Container
+Radicale runs independently with htpasswd auth enabled. The proxy joins Radicale's Docker network to reach it by container name.
 
-- [ ] Write `docker/radicale/Dockerfile` based on the official Radicale image (or `python:3-alpine` with `pip install radicale`).
-- [ ] Write `docker/radicale/config` — configure Radicale for filesystem storage, basic auth, and binding to `0.0.0.0:5232` (internal only, not exposed to the host).
-- [ ] Mount a named Docker volume (`radicale-data`) to the Radicale storage path. This is the only persistent state in the stack.
-- [ ] Mount a `docker/radicale/users` htpasswd file (populated via `.env` or a setup script) for basic auth credentials.
+#### 11.1 — Radicale Auth (External)
+
+- [x] Enable htpasswd auth in existing Radicale config (`type = htpasswd`, `htpasswd_filename = /config/users`, `htpasswd_encryption = bcrypt`).
+- [x] Generate htpasswd file with `htpasswd -cB` and configure `RADICALE_USERS` in Radicale's `.env`.
+- [x] Verify auth works: unauthenticated requests return 403, authenticated requests return 207.
 
 #### 11.2 — Backend Proxy Container
 
-- [ ] Write `proxy/Dockerfile` — multi-stage: `node:lts-alpine` build stage to install deps, then a minimal runtime image.
-- [ ] The proxy reads `RADICALE_URL`, `RADICALE_USER`, `RADICALE_PASS`, and `LLM_API_KEY` from environment variables. No credentials hardcoded.
-- [ ] Expose only the proxy port (e.g., `3001`) to the Nginx container via the internal Docker network. Do not expose it to the host directly.
+- [x] Write `proxy/Dockerfile` — multi-stage: `node:lts-alpine` build stage to install deps and compile TypeScript, then a minimal runtime image.
+- [x] The proxy reads `RADICALE_URL`, `RADICALE_USER`, `RADICALE_PASS`, `OLLAMA_BASE_URL`, and `OLLAMA_MODEL` from environment variables. No credentials hardcoded.
+- [x] CalDAV proxy uses `pathFilter` to match `/<username>/*` and `/.well-known/caldav`, preserving full paths (required because Radicale returns hrefs like `/<username>/calendar-uuid/` that tsdav reuses directly).
+- [x] AI proxy at `/api/ai/chat` streams NDJSON from Ollama without buffering.
+- [x] Health check at `/health` returns `{ status: 'ok' }`.
+- [x] Expose only port `3001` to the internal Docker network.
 
 #### 11.3 — Frontend Container
 
-- [ ] Write `Dockerfile` at the project root — multi-stage:
+- [x] Write `Dockerfile` at the project root — multi-stage:
   1. `node:lts-alpine` build stage: `npm ci && npm run build` to produce `dist/`.
   2. `nginx:alpine` runtime stage: copy `dist/` into `/usr/share/nginx/html`.
-- [ ] Write `docker/nginx/default.conf`:
-  - Serve static assets from `/usr/share/nginx/html`.
-  - Proxy `/api/` requests to the `proxy` service (e.g., `http://proxy:3001`).
-  - Set cache headers for hashed assets (`/assets/*`); no-cache for `index.html`.
-- [ ] Expose port `80` to the host (or `8080` if running rootless). Tailscale ACLs handle external access.
+- [x] Write `docker/nginx/default.conf.template` (envsubst at container start):
+  - Serve static assets from `/usr/share/nginx/html` with long cache for `/assets/*`.
+  - Proxy `/<username>/*` and `/.well-known/caldav` to the proxy service (CalDAV).
+  - Proxy `/api/*` to the proxy service (AI chat) with `proxy_buffering off` for streaming.
+  - SPA fallback: `try_files $uri $uri/ /index.html` with no-cache.
+- [x] Expose port `8080` bound to `127.0.0.1` only (Caddy reaches frontend via Docker network, no need for public port). Caddy routes external HTTPS traffic to the container.
 
 #### 11.4 — Docker Compose
 
-- [ ] Write `compose.yaml` at the project root:
-  - Services: `radicale`, `proxy`, `frontend`.
-  - Internal network (`notocal-net`) connecting all three services; only `frontend:80` published to the host.
-  - Named volume `radicale-data` for Radicale's storage directory.
-  - `depends_on` ordering: `proxy` depends on `radicale`; `frontend` depends on `proxy`.
+- [x] Write `compose.yaml` at the project root:
+  - Services: `proxy`, `frontend`.
+  - Internal network (`notocal-net`) for proxy↔frontend; external network (`radicale_radicale`) for proxy→Radicale.
+  - `depends_on` ordering: `frontend` depends on `proxy` (healthy).
   - `restart: unless-stopped` on all services.
-- [ ] Write `.env.example` with all required variables and explanatory comments: `RADICALE_USER`, `RADICALE_PASS`, `LLM_API_KEY`, `LLM_PROVIDER`, `VITE_PROXY_BASE_URL`.
-- [ ] Add `.env` to `.gitignore`.
+- [x] Write `.env.example` with all required variables and explanatory comments.
+- [x] `.env` already in `.gitignore`.
 
 #### 11.5 — Development Compose Override
 
-- [ ] Write `compose.override.yaml` for the local dev workflow:
-  - Replaces the `frontend` service with a bind-mounted Vite dev server (`npm run dev`) for HMR.
-  - Replaces the `proxy` service with a bind-mounted Node process (`npm run dev`) for hot-reload.
-  - Keeps the production `radicale` service unchanged — dev and prod share the same Radicale setup.
-- [ ] Document the two workflows in `README.md` (or an inline comment in `compose.yaml`): `docker compose up` for production, `docker compose up` (with override auto-applied) for dev.
+- [x] Write `compose.override.yaml` for the local dev workflow:
+  - Replaces the `frontend` service with a bind-mounted Vite dev server for HMR.
+  - Replaces the `proxy` service with a bind-mounted `tsx watch` process for hot-reload.
+- [x] Local dev workflow (without Docker): run `cd proxy && npm run dev` + `npm run dev` in separate terminals.
 
 #### 11.6 — Health Checks & Smoke Test
 
-- [ ] Add Docker `HEALTHCHECK` directives:
-  - `radicale`: `curl -f http://localhost:5232/.well-known/caldav` (or a simple TCP check).
-  - `proxy`: `curl -f http://localhost:3001/health` (add a `/health` route to the Express app).
-  - `frontend`: `curl -f http://localhost/` .
-- [ ] Verify `docker compose up --build` from a clean state reaches healthy status on all three services.
-- [ ] Confirm the full round-trip: browser -> Nginx -> proxy -> Radicale -> back.
-- [ ] Confirm Radicale data persists across `docker compose down && docker compose up` (volume survives).
+- [x] Add Docker `HEALTHCHECK` directives:
+  - `proxy`: `wget -qO- http://localhost:3001/health`.
+  - `frontend`: `wget -qO- http://localhost/`.
+- [x] Verify proxy round-trip: health, CalDAV PROPFIND (returns calendars), AI chat (streams NDJSON).
+- [x] Verify `docker compose up --build` from a clean state reaches healthy status on both services.
+- [x] Confirm the full round-trip in browser via Docker deployment (Caddy → Nginx → proxy → Radicale, AI chat streaming).
+- [x] Security hardening: proxy runs as non-root user, frontend port bound to localhost only.
+- [x] Deploy script (`deploy.sh`) for repeatable rsync + rebuild workflow.
 
-**Phase 11 exit criteria:** `docker compose up --build` produces a fully functional deployment. All credentials come from `.env`. Radicale data persists across restarts. The dev compose override provides HMR for frontend and proxy code. The app is accessible via Tailscale on the home lab.
+**Phase 11 exit criteria:** `docker compose up --build` produces a fully functional deployment. All credentials come from `.env`. The dev workflow provides HMR for frontend and proxy code. The app is accessible via Caddy on the home lab.
 
 ---
 

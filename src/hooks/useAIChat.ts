@@ -4,8 +4,7 @@ import { useUIStore } from '@/store/useUIStore'
 import { useGraphStore } from '@/store/useGraphStore'
 import { useFilterStore } from '@/store/useFilterStore'
 
-const OLLAMA_BASE_URL = import.meta.env.VITE_OLLAMA_BASE_URL || 'http://localhost:11434'
-const OLLAMA_MODEL = import.meta.env.VITE_OLLAMA_MODEL || 'gemma3:4b'
+const AI_CHAT_URL = '/api/ai/chat'
 
 function buildSystemPrompt(
   activeView: string,
@@ -123,22 +122,16 @@ export function useAIChat() {
     let accumulated = ''
 
     try {
-      const res = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
+      const res = await fetch(AI_CHAT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: OLLAMA_MODEL,
-          messages: ollamaMessages,
-          stream: true,
-        }),
+        body: JSON.stringify({ messages: ollamaMessages }),
         signal: controller.signal,
       })
 
       if (!res.ok) {
-        if (res.status === 404) {
-          throw new Error(`Model "${OLLAMA_MODEL}" not found. Run \`ollama pull ${OLLAMA_MODEL}\` to download it.`)
-        }
-        throw new Error(`Ollama error: ${res.status} ${res.statusText}`)
+        const detail = await res.text().catch(() => '')
+        throw new Error(`AI error: ${res.status} ${res.statusText}${detail ? ` — ${detail}` : ''}`)
       }
 
       const reader = res.body?.getReader()
@@ -195,7 +188,7 @@ export function useAIChat() {
         const errorContent = accumulated
           ? accumulated + '\n\n*[Error: connection lost]*'
           : isUnavailable
-            ? '*AI endpoint unavailable.* Make sure Ollama is running at `' + OLLAMA_BASE_URL + '`.'
+            ? '*AI endpoint unavailable.* Check that the proxy and Ollama are running.'
             : `*Error: ${message}*`
         useAIStore.getState().updateLastAssistantMessage(errorContent)
       }

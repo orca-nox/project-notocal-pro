@@ -5,7 +5,7 @@ import path from 'path'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const caldavTarget = env.VITE_CALDAV_SERVER_URL || 'http://localhost:5232'
+  const proxyTarget = env.PROXY_URL || 'http://localhost:3001'
   const caldavUser = env.VITE_CALDAV_USERNAME || 'user'
 
   return {
@@ -17,15 +17,21 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       proxy: {
-        '/.well-known/caldav': {
-          target: caldavTarget,
+        '/api': {
+          target: proxyTarget,
           changeOrigin: true,
-          secure: false,
+        },
+        '/.well-known/caldav': {
+          target: proxyTarget,
+          changeOrigin: true,
         },
         [`/${caldavUser}`]: {
-          target: caldavTarget,
+          target: proxyTarget,
           changeOrigin: true,
-          secure: false,
+        },
+        '/health': {
+          target: proxyTarget,
+          changeOrigin: true,
         },
       },
     },
