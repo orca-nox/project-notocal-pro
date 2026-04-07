@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from 'react'
 import { useCalDAV } from '@/hooks/useCalDAV'
 import { useGraphStore } from '@/store/useGraphStore'
 import { useFilterStore } from '@/store/useFilterStore'
+import { useSyncStore } from '@/store/useSyncStore'
 
 /**
  * Sync-on-focus hook: triggers a full fetch from Radicale when the browser
@@ -32,10 +33,16 @@ export function useSync() {
   const doSync = useCallback(async () => {
     if (syncingRef.current) return
     syncingRef.current = true
+    useSyncStore.getState().setStatus('syncing')
     try {
       const result = await fetchAll()
       replaceEntities(result)
       autoEnableCalendars(result.calendars.map((c) => c.id))
+      useSyncStore.getState().setStatus('connected')
+    } catch (err) {
+      useSyncStore.getState().setError(
+        err instanceof Error ? err.message : 'Sync failed',
+      )
     } finally {
       syncingRef.current = false
     }
@@ -55,6 +62,7 @@ export function useSync() {
       }
       // Then sync from Radicale in background
       await doSync()
+      useSyncStore.getState().setInitialized()
     }
     init()
   }, [loadFromCache, mergeEntities, autoEnableCalendars, doSync])

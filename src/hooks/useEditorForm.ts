@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { toast } from 'sonner'
 import { useGraphStore } from '@/store/useGraphStore'
 import { useDraftStore } from '@/store/useDraftStore'
 import { useCalDAV } from '@/hooks/useCalDAV'
@@ -156,10 +157,13 @@ export function useEditorForm<T extends Record<string, unknown>>(
         setHasDraft(false)
         setDraftTimestamp(null)
         touchedRef.current = false
+        toast.success('Saved')
       } else if (result.status === 412) {
         setConflict(true)
+        toast.warning('Conflict detected — someone else modified this item')
       } else {
         setError(result.message ?? 'Save failed')
+        toast.error(result.message ?? 'Save failed')
       }
     } finally {
       setIsSaving(false)
@@ -269,6 +273,7 @@ export function useEditorForm<T extends Record<string, unknown>>(
     }
     removeEntity(entityType, uid)
     clearDraft(uid)
+    toast.success('Deleted')
   }, [entity, entityType, uid, deleteEvent, deleteTask, deleteNote, deleteProject, removeEntity, clearDraft])
 
   // Ctrl+S handler

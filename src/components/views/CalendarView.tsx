@@ -77,6 +77,13 @@ export function CalendarView() {
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
+  // N key → open quick add (from global shortcut)
+  useEffect(() => {
+    const handler = () => openQuickAdd({ date: new Date(), isAllDay: false })
+    window.addEventListener('notocal:quick-add', handler)
+    return () => window.removeEventListener('notocal:quick-add', handler)
+  }, [])
+
   function openQuickAdd(slot: QuickAddSlot) {
     setQuickAddSlot(slot)
     setQuickAddOpen(true)
@@ -171,6 +178,13 @@ export function CalendarView() {
           </button>
         </div>
       </div>
+
+      {/* Empty state overlay */}
+      {visibleEvents.length === 0 && (
+        <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+          Nothing scheduled. Press <kbd className="mx-1 rounded bg-muted px-1.5 py-0.5 text-xs font-mono">C</kbd> to add an event.
+        </div>
+      )}
 
       {/* Grid */}
       <div className="flex-1 overflow-hidden">

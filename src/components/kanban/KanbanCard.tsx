@@ -1,5 +1,6 @@
 import { Calendar, CheckSquare, StickyNote } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
+import { EntityContextMenu } from '@/components/context-menus/EntityContextMenu'
 import { icalToDate, isToday } from '@/lib/caldav/dateUtils'
 import type { Entity, Event, Task } from '@/types/entities'
 
@@ -49,6 +50,7 @@ export function KanbanCard({
   }
 
   return (
+    <EntityContextMenu entityType={type} entityUid={entity.uid}>
     <div
       draggable={type === 'task'}
       onDragStart={(e) => onDragStart?.(e, entity)}
@@ -85,5 +87,6 @@ export function KanbanCard({
         </div>
       </div>
     </div>
+    </EntityContextMenu>
   )
 }

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { List, Columns3 } from 'lucide-react'
 import { useGraphStore } from '@/store/useGraphStore'
 import { useFilterStore } from '@/store/useFilterStore'
@@ -34,6 +34,26 @@ export function TasksView() {
   const { groups, flatSorted, totalCount, filteredCount } = useFilteredTasks()
 
   const [deleteTarget, setDeleteTarget] = useState<Task | null>(null)
+  const quickAddRef = useRef<HTMLInputElement>(null)
+
+  // N key → focus quick-add input
+  useEffect(() => {
+    const handler = () => quickAddRef.current?.focus()
+    window.addEventListener('notocal:quick-add', handler)
+    return () => window.removeEventListener('notocal:quick-add', handler)
+  }, [])
+
+  // Delete key → delete selected task
+  useEffect(() => {
+    const handler = ((e: CustomEvent) => {
+      const uid = e.detail?.uid
+      if (!uid) return
+      const task = tasks.get(uid)
+      if (task) setDeleteTarget(task)
+    }) as EventListener
+    window.addEventListener('notocal:delete-selected', handler)
+    return () => window.removeEventListener('notocal:delete-selected', handler)
+  }, [tasks])
 
   const calendarsArr = useMemo(
     () => Array.from(calendars.values()).sort((a, b) => a.order - b.order),
@@ -173,7 +193,7 @@ export function TasksView() {
 
       {/* Quick Add */}
       <div className="shrink-0 border-b border-border px-4 py-2">
-        <TaskQuickAdd calendars={calendarsArr} onSubmit={handleQuickAdd} />
+        <TaskQuickAdd calendars={calendarsArr} onSubmit={handleQuickAdd} inputRef={quickAddRef} />
       </div>
 
       {/* Content */}

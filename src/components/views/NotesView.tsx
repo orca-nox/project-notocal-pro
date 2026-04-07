@@ -1,22 +1,64 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Search, Maximize2, Minimize2 } from 'lucide-react'
 import { useGraphStore } from '@/store/useGraphStore'
 import { useUIStore } from '@/store/useUIStore'
+import { useCalDAV } from '@/hooks/useCalDAV'
 import { NotesFolderList, type NoteFolder } from '@/components/notes/NotesFolderList'
 import { NotesNoteList } from '@/components/notes/NotesNoteList'
 import { NotesMarkdownEditor } from '@/components/notes/NotesMarkdownEditor'
 import { NoteQuickAdd } from '@/components/notes/NoteQuickAdd'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import type { Note } from '@/types/entities'
 
 export function NotesView() {
   const notes = useGraphStore((s) => s.notes)
+  const removeEntity = useGraphStore((s) => s.removeEntity)
   const selectedEntityId = useUIStore((s) => s.selectedEntityId)
   const selectEntity = useUIStore((s) => s.selectEntity)
   const notesEditorMode = useUIStore((s) => s.notesEditorMode)
   const setNotesEditorMode = useUIStore((s) => s.setNotesEditorMode)
 
+  const { deleteNote } = useCalDAV()
+
   const [selectedFolder, setSelectedFolder] = useState<NoteFolder>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<Note | null>(null)
+  const quickAddRef = useRef<HTMLInputElement>(null)
+
+  // N key → focus quick-add input
+  useEffect(() => {
+    const handler = () => quickAddRef.current?.focus()
+    window.addEventListener('notocal:quick-add', handler)
+    return () => window.removeEventListener('notocal:quick-add', handler)
+  }, [])
+
+  // Delete key → delete selected note
+  useEffect(() => {
+    const handler = ((e: CustomEvent) => {
+      const uid = e.detail?.uid
+      if (!uid) return
+      const note = notes.get(uid)
+      if (note) setDeleteTarget(note)
+    }) as EventListener
+    window.addEventListener('notocal:delete-selected', handler)
+    return () => window.removeEventListener('notocal:delete-selected', handler)
+  }, [notes])
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deleteTarget) return
+    await deleteNote(deleteTarget)
+    removeEntity('note', deleteTarget.uid)
+    if (selectedEntityId === deleteTarget.uid) selectEntity(null)
+    setDeleteTarget(null)
+  }, [deleteTarget, deleteNote, removeEntity, selectedEntityId, selectEntity])
 
   const selectedNote = selectedEntityId ? notes.get(selectedEntityId) : null
 
@@ -114,6 +156,7 @@ export function NotesView() {
             <NoteQuickAdd
               selectedFolder={selectedFolder}
               onCreated={handleNoteCreated}
+              inputRef={quickAddRef}
             />
           </div>
 
@@ -139,6 +182,22 @@ export function NotesView() {
           )}
         </div>
       </div>
+
+      {/* Delete confirmation */}
+      <Dialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Note</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Delete &ldquo;{deleteTarget?.summary || 'Untitled'}&rdquo;? This cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -24,7 +24,7 @@ export function TaskListView({
   if (groups.length === 0) {
     return (
       <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
-        No tasks match the current filters.
+        No tasks match your filters.
       </div>
     )
   }

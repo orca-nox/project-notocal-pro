@@ -2,6 +2,7 @@ import { ChevronDown, ChevronRight, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
+import { EntityContextMenu } from '@/components/context-menus/EntityContextMenu'
 import { icalToDate, isToday, isSameDay } from '@/lib/caldav/dateUtils'
 import type { Task } from '@/types/entities'
 
@@ -80,6 +81,7 @@ export function TaskRow({
 
   return (
     <div>
+      <EntityContextMenu entityType="task" entityUid={task.uid} onDelete={() => onDelete(task)}>
       <div
         className={`group flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer transition-colors ${
           isSelected ? 'bg-accent' : 'hover:bg-accent/50'
@@ -132,6 +134,7 @@ export function TaskRow({
           <Trash2 className="h-3.5 w-3.5 text-destructive" />
         </Button>
       </div>
+      </EntityContextMenu>
 
       {hasSubtasks && expanded && (
         <div className="ml-2">

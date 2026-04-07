@@ -8,6 +8,7 @@ import {
   isAllDay,
 } from '@/lib/caldav/dateUtils'
 import { EventBlock } from './EventBlock'
+import { EntityContextMenu } from '@/components/context-menus/EntityContextMenu'
 import type { Event, CalendarInfo } from '@/types/entities'
 
 const DAY_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -118,17 +119,18 @@ export function MonthGrid({
 
                   {/* Event chips */}
                   {cell.events.slice(0, MAX_VISIBLE_CHIPS).map((ev) => (
-                    <EventBlock
-                      key={ev.uid}
-                      event={ev}
-                      calendarColor={calendars.get(ev.calendarId)?.color ?? '#3b82f6'}
-                      mode="month"
-                      isSelected={ev.uid === selectedEventId}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onEventClick(ev)
-                      }}
-                    />
+                    <EntityContextMenu key={ev.uid} entityType="event" entityUid={ev.uid}>
+                      <EventBlock
+                        event={ev}
+                        calendarColor={calendars.get(ev.calendarId)?.color ?? '#3b82f6'}
+                        mode="month"
+                        isSelected={ev.uid === selectedEventId}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onEventClick(ev)
+                        }}
+                      />
+                    </EntityContextMenu>
                   ))}
 
                   {overflow > 0 && (

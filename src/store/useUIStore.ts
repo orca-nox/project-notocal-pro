@@ -8,6 +8,7 @@ interface UIState {
   navPinned: boolean
   notesEditorMode: 'split' | 'full'
   tasksViewMode: 'list' | 'kanban'
+  searchOpen: boolean
 }
 
 interface UIActions {
@@ -16,6 +17,7 @@ interface UIActions {
   toggleNavPin(): void
   setNotesEditorMode(mode: 'split' | 'full'): void
   setTasksViewMode(mode: 'list' | 'kanban'): void
+  setSearchOpen(open: boolean): void
 }
 
 export const useUIStore = create<UIState & UIActions>()(
@@ -26,6 +28,7 @@ export const useUIStore = create<UIState & UIActions>()(
       navPinned: false,
       notesEditorMode: 'split',
       tasksViewMode: 'list',
+      searchOpen: false,
 
       setView(view) {
         set({ activeView: view, selectedEntityId: null })
@@ -41,6 +44,9 @@ export const useUIStore = create<UIState & UIActions>()(
       },
       setTasksViewMode(mode) {
         set({ tasksViewMode: mode })
+      },
+      setSearchOpen(open) {
+        set({ searchOpen: open })
       },
     }),
     {

@@ -13,6 +13,7 @@ import { useUIStore } from '@/store/useUIStore'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Separator } from '@/components/ui/separator'
+import { CalendarContextMenu } from '@/components/context-menus/CalendarContextMenu'
 import type { ActiveView } from '@/types/store'
 
 const NAV_ITEMS: { view: ActiveView; label: string; icon: typeof FolderKanban; key: string }[] = [
@@ -44,9 +45,14 @@ export function Sidebar() {
         </Button>
       </div>
 
-      {/* Search placeholder */}
+      {/* Search button */}
       <div className="px-3 pb-2">
-        <Button variant="outline" className="w-full justify-start gap-2 text-muted-foreground" size="sm">
+        <Button
+          variant="outline"
+          className="w-full justify-start gap-2 text-muted-foreground"
+          size="sm"
+          onClick={() => useUIStore.getState().setSearchOpen(true)}
+        >
           <Search className="h-4 w-4" />
           <span>Search...</span>
           <kbd className="ml-auto rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono">Ctrl K</kbd>
@@ -86,17 +92,24 @@ export function Sidebar() {
         ) : (
           <div className="space-y-1.5">
             {calendarsArr.map((c) => (
-              <label key={c.id} className="flex items-center gap-2 cursor-pointer text-sm">
-                <Checkbox
-                  checked={enabledCalendars.has(c.id)}
-                  onCheckedChange={() => toggleCalendar(c.id)}
-                />
-                <span
-                  className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
-                  style={{ backgroundColor: c.color }}
-                />
-                <span className="truncate">{c.displayName}</span>
-              </label>
+              <CalendarContextMenu
+                key={c.id}
+                calendar={c}
+                enabled={enabledCalendars.has(c.id)}
+                onToggle={() => toggleCalendar(c.id)}
+              >
+                <label className="flex items-center gap-2 cursor-pointer text-sm">
+                  <Checkbox
+                    checked={enabledCalendars.has(c.id)}
+                    onCheckedChange={() => toggleCalendar(c.id)}
+                  />
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: c.color }}
+                  />
+                  <span className="truncate">{c.displayName}</span>
+                </label>
+              </CalendarContextMenu>
             ))}
           </div>
         )}
