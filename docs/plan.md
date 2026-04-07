@@ -678,7 +678,7 @@ These issues were discovered during Phase 5 development and testing with real ta
 
 #### 10.1 — Global Search Omnibar
 
-- [ ] Implement `components/SearchOverlay.tsx` using shadcn/ui's `Command` component (cmdk):
+- [x] Implement `components/SearchOverlay.tsx` using shadcn/ui's `Command` component (cmdk):
   - Full-screen overlay triggered by `Ctrl+K` or clicking the sidebar search button.
   - Searches across all entity types: events, tasks, notes, projects.
   - Search targets: `SUMMARY`, `DESCRIPTION`, `LOCATION`.
@@ -688,22 +688,22 @@ These issues were discovered during Phase 5 development and testing with real ta
 
 #### 10.2 — Connection Status Indicator
 
-- [ ] Wire the Top Nav's connection status indicator to real sync state from `useSync`:
+- [x] Wire the Top Nav's connection status indicator to real sync state from `useSync`:
   - **Connected** (green dot): last sync succeeded.
   - **Syncing** (animated): sync in progress.
   - **Error** (red dot + tooltip): last sync failed (network error, auth failure, etc.).
 
 #### 10.3 — Keyboard Navigation Polish
 
-- [ ] `↑` / `↓` arrow keys navigate between items in lists (task list, note list, search results).
-- [ ] `Enter` opens/selects the highlighted item.
-- [ ] `Tab` cycles focus between the three columns.
-- [ ] `N` creates a new item contextually (event in Calendar view, task in Tasks view, note in Notes view, project in Projects view).
-- [ ] `Delete` / `Backspace` on a selected item triggers deletion (with confirmation).
+- [x] `↑` / `↓` arrow keys navigate between items in lists (task list, note list, search results).
+- [x] `Enter` opens/selects the highlighted item.
+- [ ] `Tab` cycles focus between the three columns. *(deferred — hierarchy needs further design)*
+- [x] `N` creates a new item contextually (event in Calendar view, task in Tasks view, note in Notes view, project in Projects view).
+- [x] `Delete` / `Backspace` on a selected item triggers deletion (with confirmation).
 
 #### 10.4 — Empty States
 
-- [ ] Design and implement empty states for each view:
+- [x] Design and implement empty states for each view:
   - No projects: *"Create your first project to get started."*
   - No events this month: *"Nothing scheduled. Press C to add an event."*
   - No tasks matching filters: *"No tasks match your filters."*
@@ -711,17 +711,17 @@ These issues were discovered during Phase 5 development and testing with real ta
 
 #### 10.5 — Loading & Error States
 
-- [ ] Skeleton loaders while initial CalDAV fetch is in progress (cache miss on first load).
-- [ ] Toast notifications for successful saves, deletions, and errors.
-- [ ] Graceful offline handling: if Radicale is unreachable, show a persistent banner and operate from cache in read-only mode.
+- [x] Skeleton loaders while initial CalDAV fetch is in progress (cache miss on first load).
+- [x] Toast notifications for successful saves, deletions, and errors.
+- [x] Graceful offline handling: if Radicale is unreachable, show a persistent banner and operate from cache in read-only mode.
+- [x] AI endpoint unavailable error: shows clear message when Ollama is unreachable or model not found.
 
-#### 10.6 — Context Menus (Optional)
+#### 10.6 — Context Menus
 
-- [ ] If time permits, add right-click context menus via `@radix-ui/react-context-menu`:
+- [x] Right-click context menus via `@base-ui/react` context-menu:
   - On events/tasks/notes: Edit, Delete, Duplicate, Move to Project, Move to Calendar.
   - On projects: Edit, Delete, Change Priority.
   - On calendars (sidebar): Toggle, Edit Color/Name.
-- [ ] This is a nice-to-have and can be deferred past v1.
 
 **Phase 10 exit criteria:** Global search finds entities across all types. Keyboard navigation is fluid. Empty/loading/error states are handled. The app feels complete as a standalone productivity tool.
 

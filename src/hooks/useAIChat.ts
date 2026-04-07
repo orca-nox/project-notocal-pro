@@ -135,6 +135,9 @@ export function useAIChat() {
       })
 
       if (!res.ok) {
+        if (res.status === 404) {
+          throw new Error(`Model "${OLLAMA_MODEL}" not found. Run \`ollama pull ${OLLAMA_MODEL}\` to download it.`)
+        }
         throw new Error(`Ollama error: ${res.status} ${res.statusText}`)
       }
 
@@ -184,9 +187,16 @@ export function useAIChat() {
       if ((err as Error).name === 'AbortError') {
         // User cancelled
       } else {
+        const message = (err as Error).message ?? ''
+        const isUnavailable = message.includes('Failed to fetch')
+          || message.includes('NetworkError')
+          || message.includes('net::ERR_CONNECTION_REFUSED')
+          || message.includes('Load failed')
         const errorContent = accumulated
           ? accumulated + '\n\n*[Error: connection lost]*'
-          : `*Error: ${(err as Error).message}*`
+          : isUnavailable
+            ? '*AI endpoint unavailable.* Make sure Ollama is running at `' + OLLAMA_BASE_URL + '`.'
+            : `*Error: ${message}*`
         useAIStore.getState().updateLastAssistantMessage(errorContent)
       }
     } finally {

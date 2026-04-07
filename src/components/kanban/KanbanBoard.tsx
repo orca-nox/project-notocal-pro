@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react'
 import { Trash2 } from 'lucide-react'
 import { KanbanColumn, type QuickAddEntityType } from './KanbanColumn'
 import { KanbanCard, type KanbanColumnId } from './KanbanCard'
+import { ProjectContextMenu } from '@/components/context-menus/ProjectContextMenu'
 import { icalToDate } from '@/lib/caldav/dateUtils'
 import type { Entity, Event, Task, Note, Project } from '@/types/entities'
 
@@ -137,29 +138,31 @@ export function KanbanBoard({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <div
-          className="flex items-center gap-2 cursor-pointer flex-1 min-w-0"
-          onClick={() => onSelect(project as unknown as Entity)}
-        >
-          <h2 className="text-base font-semibold truncate">{project.summary}</h2>
-          <span className="text-xs text-muted-foreground shrink-0">[{project.status}]</span>
-        </div>
-        {hiddenCount > 0 && (
-          <span className="text-xs text-amber-500 shrink-0">
-            {hiddenCount} item{hiddenCount > 1 ? 's' : ''} hidden by calendar filters
-          </span>
-        )}
-        {onDelete && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(project) }}
-            className="shrink-0 rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-            title="Delete project"
+      <ProjectContextMenu project={project} onDelete={onDelete}>
+        <div className="flex items-center gap-2">
+          <div
+            className="flex items-center gap-2 cursor-pointer flex-1 min-w-0"
+            onClick={() => onSelect(project as unknown as Entity)}
           >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
-        )}
-      </div>
+            <h2 className="text-base font-semibold truncate">{project.summary}</h2>
+            <span className="text-xs text-muted-foreground shrink-0">[{project.status}]</span>
+          </div>
+          {hiddenCount > 0 && (
+            <span className="text-xs text-amber-500 shrink-0">
+              {hiddenCount} item{hiddenCount > 1 ? 's' : ''} hidden by calendar filters
+            </span>
+          )}
+          {onDelete && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(project) }}
+              className="shrink-0 rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+              title="Delete project"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      </ProjectContextMenu>
       <div className="flex gap-3 overflow-x-auto pb-2">
         <KanbanColumn
           title="Needs Action"

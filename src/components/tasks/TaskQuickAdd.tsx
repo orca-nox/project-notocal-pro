@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, type Ref } from 'react'
 import { Plus } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -7,9 +7,10 @@ import type { CalendarInfo } from '@/types/entities'
 interface TaskQuickAddProps {
   calendars: CalendarInfo[]
   onSubmit: (title: string, calendarId: string) => void
+  inputRef?: Ref<HTMLInputElement>
 }
 
-export function TaskQuickAdd({ calendars, onSubmit }: TaskQuickAddProps) {
+export function TaskQuickAdd({ calendars, onSubmit, inputRef }: TaskQuickAddProps) {
   const [title, setTitle] = useState('')
   const [calendarId, setCalendarId] = useState(calendars[0]?.id ?? '')
 
@@ -24,6 +25,7 @@ export function TaskQuickAdd({ calendars, onSubmit }: TaskQuickAddProps) {
     <div className="flex items-center gap-2">
       <Plus className="h-4 w-4 text-muted-foreground shrink-0" />
       <Input
+        ref={inputRef}
         placeholder="Add a task..."
         value={title}
         onChange={(e) => setTitle(e.target.value)}

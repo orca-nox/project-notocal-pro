@@ -8,6 +8,9 @@ import { TopNav } from '@/components/panes/TopNav'
 import { MainPane } from '@/components/panes/MainPane'
 import { DetailPane } from '@/components/panes/DetailPane'
 import { ChatBubble } from '@/components/ai/ChatBubble'
+import { SearchOverlay } from '@/components/SearchOverlay'
+import { Toaster } from '@/components/ui/sonner'
+import { OfflineBanner } from '@/components/OfflineBanner'
 
 function App() {
   const { error: bootstrapError } = useBootstrap()
@@ -34,6 +37,8 @@ function App() {
           </div>
         )}
 
+        <OfflineBanner />
+
         <Group orientation="horizontal" id="notocal-panels" className="flex-1">
           <Panel defaultSize={65} minSize={40}>
             <MainPane />
@@ -47,6 +52,12 @@ function App() {
 
       {/* Floating AI chat widget */}
       <ChatBubble />
+
+      {/* Global search overlay */}
+      <SearchOverlay />
+
+      {/* Toast notifications */}
+      <Toaster position="bottom-right" />
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import { useGraphStore } from '@/store/useGraphStore'
 import { useFilterStore } from '@/store/useFilterStore'
@@ -49,6 +49,25 @@ export function ProjectsView() {
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null)
   const [deleteMode, setDeleteMode] = useState<'cascade' | 'sever' | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // N key → open create project dialog
+  useEffect(() => {
+    const handler = () => handleCreateOpen()
+    window.addEventListener('notocal:quick-add', handler)
+    return () => window.removeEventListener('notocal:quick-add', handler)
+  }, [])
+
+  // Delete key → delete selected project
+  useEffect(() => {
+    const handler = ((e: CustomEvent) => {
+      const uid = e.detail?.uid
+      if (!uid) return
+      const project = projects.get(uid)
+      if (project) setDeleteTarget(project)
+    }) as EventListener
+    window.addEventListener('notocal:delete-selected', handler)
+    return () => window.removeEventListener('notocal:delete-selected', handler)
+  }, [projects])
 
   const projectsArr = useMemo(
     () => Array.from(projects.values()).sort((a, b) => a.priority - b.priority),

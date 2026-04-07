@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useGraphStore } from '@/store/useGraphStore'
 import { icalToDate } from '@/lib/caldav/dateUtils'
+import { EntityContextMenu } from '@/components/context-menus/EntityContextMenu'
 import type { NoteFolder } from './NotesFolderList'
 
 interface NotesNoteListProps {
@@ -68,7 +69,7 @@ export function NotesNoteList({ selectedFolder, selectedNoteId, onSelectNote, se
   if (filteredNotes.length === 0) {
     return (
       <div className="flex items-center justify-center p-4 text-sm text-muted-foreground">
-        No notes found.
+        {searchQuery.trim() ? 'No notes match your search.' : 'Create a note to capture your thoughts.'}
       </div>
     )
   }
@@ -76,29 +77,30 @@ export function NotesNoteList({ selectedFolder, selectedNoteId, onSelectNote, se
   return (
     <div className="flex flex-col">
       {filteredNotes.map((n) => (
-        <button
-          key={n.uid}
-          className={`flex flex-col gap-0.5 border-b border-border px-3 py-2.5 text-left transition-colors ${
-            selectedNoteId === n.uid
-              ? 'bg-accent'
-              : 'hover:bg-accent/50'
-          }`}
-          onClick={() => onSelectNote(n.uid)}
-        >
-          <div className="flex items-baseline gap-2">
-            <span className="truncate text-sm font-medium">
-              {n.summary || 'Untitled'}
-            </span>
-            <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
-              {formatDate(n.dtstamp)}
-            </span>
-          </div>
-          {n.description && (
-            <p className="line-clamp-2 text-xs text-muted-foreground">
-              {snippetFromDescription(n.description)}
-            </p>
-          )}
-        </button>
+        <EntityContextMenu key={n.uid} entityType="note" entityUid={n.uid}>
+          <button
+            className={`flex flex-col gap-0.5 border-b border-border px-3 py-2.5 text-left transition-colors ${
+              selectedNoteId === n.uid
+                ? 'bg-accent'
+                : 'hover:bg-accent/50'
+            }`}
+            onClick={() => onSelectNote(n.uid)}
+          >
+            <div className="flex items-baseline gap-2">
+              <span className="truncate text-sm font-medium">
+                {n.summary || 'Untitled'}
+              </span>
+              <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
+                {formatDate(n.dtstamp)}
+              </span>
+            </div>
+            {n.description && (
+              <p className="line-clamp-2 text-xs text-muted-foreground">
+                {snippetFromDescription(n.description)}
+              </p>
+            )}
+          </button>
+        </EntityContextMenu>
       ))}
     </div>
   )

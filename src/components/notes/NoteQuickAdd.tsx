@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, type Ref } from 'react'
 import { Plus } from 'lucide-react'
 import { useGraphStore } from '@/store/useGraphStore'
 import { useCalDAV } from '@/hooks/useCalDAV'
@@ -11,9 +11,10 @@ import type { NoteFolder } from './NotesFolderList'
 interface NoteQuickAddProps {
   selectedFolder: NoteFolder
   onCreated?: (uid: string) => void
+  inputRef?: Ref<HTMLInputElement>
 }
 
-export function NoteQuickAdd({ selectedFolder, onCreated }: NoteQuickAddProps) {
+export function NoteQuickAdd({ selectedFolder, onCreated, inputRef }: NoteQuickAddProps) {
   const calendars = useGraphStore((s) => s.calendars)
   const projects = useGraphStore((s) => s.projects)
   const updateEntity = useGraphStore((s) => s.updateEntity)
@@ -75,6 +76,7 @@ export function NoteQuickAdd({ selectedFolder, onCreated }: NoteQuickAddProps) {
     <div className="flex items-center gap-2 px-3 py-2">
       <Plus className="h-4 w-4 shrink-0 text-muted-foreground" />
       <Input
+        ref={inputRef}
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={(e) => {
